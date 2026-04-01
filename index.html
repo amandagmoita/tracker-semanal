@@ -180,6 +180,22 @@ button{font-family:inherit}
 .sb-notes h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#111;margin-bottom:8px}
 .sb-note{padding:4px 6px;background:#FFFDE7;border-radius:4px;margin-bottom:4px;border-left:2px solid #EAB308;font-size:10px;color:#666;line-height:1.4}
 .sb-note .sn-task{font-weight:600;color:#444}
+.sb-links{margin-top:14px;padding-top:12px;border-top:1px solid #F0F0F0}
+.sb-links h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#111;margin-bottom:8px}
+.sl-add{display:flex;gap:4px;margin-bottom:6px}
+.sl-add input{flex:1;padding:5px 7px;border:1px solid #E5E5E5;border-radius:5px;font-size:10px;font-family:inherit;outline:none}
+.sl-add input:focus{border-color:#999}
+.sl-add button{background:#111;color:#FFF;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:10px;font-weight:600;font-family:inherit}
+.sl-quick{display:flex;gap:3px;margin-bottom:8px;flex-wrap:wrap}
+.sl-quick button{padding:3px 7px;border:1px solid #E5E5E5;border-radius:5px;background:#FFF;cursor:pointer;font-size:9px;font-family:inherit;color:#555}
+.sl-quick button:hover{border-color:#999}
+.sl-item{display:flex;align-items:center;gap:5px;padding:5px 7px;background:#FAFAFA;border-radius:5px;margin-bottom:3px;font-size:10px}
+.sl-item .sl-ico{font-size:13px;flex-shrink:0}
+.sl-item .sl-name{flex:1;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;text-decoration:underline;text-decoration-color:#DDD;text-underline-offset:2px}
+.sl-item .sl-name:hover{color:#111;text-decoration-color:#999}
+.sl-item .sl-del{background:none;border:none;cursor:pointer;font-size:9px;color:#CCC;padding:0;flex-shrink:0}
+.sl-item .sl-del:hover{color:#999}
+.sl-empty{font-size:10px;color:#CCC;text-align:center;padding:8px 0}
 
 /* ═══ LUNCH BLOCK ═══ */
 .lunch-block{
@@ -276,7 +292,7 @@ const DS={
   ],
 };
 
-let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null,memos:[],selTask:null};
+let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null,memos:[],selTask:null,sideLinks:[]};
 
 function getWeekKey(d){d=new Date(d);const dy=d.getDay(),df=d.getDate()-dy+(dy===0?-6:1);const m=new Date(d.setDate(df));return`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}-${String(m.getDate()).padStart(2,"0")}`}
 function weekDates(w){const[y,m,d]=w.split("-").map(Number);const mn=new Date(y,m-1,d);return DAYS.map((_,i)=>{const t=new Date(mn);t.setDate(mn.getDate()+i);return`${String(t.getDate()).padStart(2,"0")}/${String(t.getMonth()+1).padStart(2,"0")}`})}
@@ -320,10 +336,12 @@ function load(){
   try{const d=localStorage.getItem(dk());S.data=d?JSON.parse(d):{}}catch{S.data={}}
   try{const s=localStorage.getItem(sk());S.sched=s?JSON.parse(s):getDefaultSchedule(S.week)}catch{S.sched=getDefaultSchedule(S.week)}
   try{const m=localStorage.getItem(mk());S.memos=m?JSON.parse(m):[]}catch{S.memos=[]}
+  try{const l=localStorage.getItem("tv3:sidelinks");S.sideLinks=l?JSON.parse(l):[]}catch{S.sideLinks=[]}
 }
 function saveD(){localStorage.setItem(dk(),JSON.stringify(S.data))}
 function saveS(){localStorage.setItem(sk(),JSON.stringify(S.sched))}
 function saveM(){localStorage.setItem(mk(),JSON.stringify(S.memos))}
+function saveSL(){localStorage.setItem("tv3:sidelinks",JSON.stringify(S.sideLinks))}
 
 function allT(){return Object.values(S.sched).flat()}
 function dStats(day){const t=S.sched[day],dn=t.filter(x=>S.data[x.id]?.done).length;return{done:dn,total:t.length,pct:t.length?Math.round(dn/t.length*100):0}}
@@ -551,6 +569,30 @@ function renderTimeline(wd,td){
     </div>`;
   });
   sb+=`</div>`;
+
+  // Sidebar links (global, not per-week)
+  sb+=`<div class="sb-links"><h3>🔗 links rápidos</h3>
+    <div class="sl-add">
+      <input type="text" id="sl-url" placeholder="colar URL..." onkeydown="if(event.key==='Enter')addSideLink()">
+      <button onclick="addSideLink()">+</button>
+    </div>
+    <div class="sl-quick">
+      <button onclick="newSideFile('doc')">📄 Doc</button>
+      <button onclick="newSideFile('sheet')">📊 Sheet</button>
+      <button onclick="newSideFile('slides')">📽️ Slides</button>
+    </div>`;
+  if(!S.sideLinks.length) sb+=`<div class="sl-empty">nenhum link salvo</div>`;
+  else S.sideLinks.forEach((lk,i)=>{
+    const ico=getLinkIcon(lk.url);
+    const name=lk.name||extractLinkName(lk.url);
+    sb+=`<div class="sl-item">
+      <span class="sl-ico">${ico}</span>
+      <span class="sl-name" onclick="window.open('${esc(lk.url)}','_blank')">${esc(name)}</span>
+      <button class="sl-del" onclick="delSideLink(${i})">✕</button>
+    </div>`;
+  });
+  sb+=`</div>`;
+
   const allNotes=allT().filter(t=>S.data[t.id]?.note);
   if(allNotes.length){
     sb+=`<div class="sb-notes"><h3>📝 notas das tarefas</h3>`;
@@ -749,6 +791,33 @@ window.resetW=()=>{if(!confirm("Resetar tudo desta semana?"))return;S.data={};S.
 window.addMemo=()=>{const el=document.getElementById("memo-in");if(!el||!el.value.trim())return;S.memos.push({text:el.value.trim(),done:false});saveM();render();setTimeout(()=>{const i=document.getElementById("memo-in");if(i)i.focus()},50)};
 window.tgMemo=(i)=>{S.memos[i].done=!S.memos[i].done;saveM();render()};
 window.delMemo=(i)=>{S.memos.splice(i,1);saveM();render()};
+
+// Sidebar links (global)
+window.addSideLink=()=>{
+  const el=document.getElementById("sl-url");
+  if(!el||!el.value.trim())return;
+  let url=el.value.trim();
+  if(!url.startsWith("http"))url="https://"+url;
+  const name=prompt("Nome do link (ou deixe vazio):")||"";
+  S.sideLinks.push({url,name});
+  saveSL();render();
+  setTimeout(()=>{const inp=document.getElementById("sl-url");if(inp){inp.value="";inp.focus();}},50);
+};
+window.delSideLink=(i)=>{S.sideLinks.splice(i,1);saveSL();render()};
+window.newSideFile=(type)=>{
+  const urls={doc:"https://docs.google.com/document/create?usp=sheets_home&oi=doc",sheet:"https://docs.google.com/spreadsheets/create?usp=sheets_home",slides:"https://docs.google.com/presentation/create?usp=slides_home"};
+  const names={doc:"Google Doc",sheet:"Google Sheet",slides:"Google Slides"};
+  window.open(urls[type],"_blank");
+  const name=prompt("Nome para o "+names[type]+" (ou deixe vazio):")||names[type];
+  // User needs to paste real URL
+  setTimeout(()=>{
+    const realUrl=prompt("Cole a URL do "+names[type]+" criado:");
+    if(realUrl&&realUrl.trim()){
+      S.sideLinks.push({url:realUrl.trim(),name});
+      saveSL();render();
+    }
+  },2000);
+};
 window.onMD=(e,d,i)=>{
   if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;
   e.preventDefault();
