@@ -711,7 +711,7 @@ function renderTimeline(wd,td){
 }
 
 function renderDay(wd,td){
-  let h=`<div class="day-pills">${DAYS.map((d,i)=>{const s=dStats(d);return`<button class="day-pill ${wd[i]===td?"today":""} ${S.activeDay===d?"active":""}" onclick="setAD('${d}')"><div class="nm">${d}</div><div class="st">${s.pct}%</div></button>`}).join("")}</div>`;
+  let h=`<div class="day-pills">${DAYS.map((d,i)=>{const s=dStats(d);return`<button class="day-pill ${wd[i]===td?"today":""} ${S.activeDay===d?"active":""}" onclick="setAD('${d}')"><div class="nm">${d}</div><div style="font-size:8px;color:${S.activeDay===d?"rgba(255,255,255,.5)":"#BBB"};margin:1px 0">${wd[i]}</div><div class="st">${s.pct}%</div></button>`}).join("")}</div>`;
   const days=S.activeDay?[S.activeDay]:DAYS;
   days.forEach(day=>{
     if(!S.activeDay)h+=`<div class="dlabel">${day} · ${wd[DAYS.indexOf(day)]}</div>`;
