@@ -44,7 +44,7 @@ button{font-family:inherit}
 
 .tblock{
   position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 6px;
-  cursor:grab;user-select:none;touch-action:none;overflow:hidden;
+  cursor:pointer;user-select:none;touch-action:none;overflow:hidden;
   border:1px solid rgba(0,0,0,.08);transition:opacity .15s;z-index:1;
 }
 .tblock.done{opacity:.45}
@@ -312,35 +312,52 @@ function totalHeight(){
 function timeLabel(min){const h=Math.floor(min/60),m=min%60;return`${h}h${m?String(m).padStart(2,"0"):""}`}
 
 // ══════ DRAG & DROP ══════
-let drag=null,ghost=null,dropInfo=null,longPress=null,lpData=null,resizing=null;
+let drag=null,ghost=null,dropInfo=null,resizing=null;
+// Pointer tracking: distinguish click from drag
+let ptrDown=null; // {e, day, idx, pos, moved}
+let longPress=null,lpData=null;
 
 function getP(e){return e.touches?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY}}
 
-function startDragBlock(e,day,idx){
+function actuallyStartDrag(day,idx,pos){
   const t=S.sched[day][idx];
   ghost=document.createElement("div");ghost.className="ghost";ghost.textContent=t.icon+" "+t.task;
-  const p=getP(e);ghost.style.left=p.x+"px";ghost.style.top=p.y+"px";
+  ghost.style.left=pos.x+"px";ghost.style.top=pos.y+"px";
   document.body.appendChild(ghost);
   drag={day,idx,id:t.id};
   const el=document.querySelector(`[data-tid="${t.id}"]`);if(el)el.classList.add("dragging");
   document.body.style.overflow="hidden";
-  if(e.cancelable)e.preventDefault();
 }
 
 function onMoveGlobal(e){
   if(resizing){doResize(e);return;}
-  if(!drag&&longPress){
-    const p=getP(e),d=getP(lpData.e);
+
+  // Check if pointer is down but drag hasn't started — detect movement threshold
+  if(ptrDown&&!ptrDown.moved&&!drag){
+    const p=getP(e);
+    const dx=Math.abs(p.x-ptrDown.pos.x),dy=Math.abs(p.y-ptrDown.pos.y);
+    if(dx>5||dy>5){
+      ptrDown.moved=true;
+      // Cancel long press if active
+      if(longPress){clearTimeout(longPress);longPress=null;lpData=null;}
+      actuallyStartDrag(ptrDown.day,ptrDown.idx,p);
+    }
+    return;
+  }
+
+  // Touch long press movement cancel
+  if(!drag&&longPress&&lpData){
+    const p=getP(e),d=lpData.pos;
     if(Math.abs(p.x-d.x)>8||Math.abs(p.y-d.y)>8){clearTimeout(longPress);longPress=null;lpData=null;}
     return;
   }
+
   if(!drag)return;
   if(e.cancelable)e.preventDefault();
   const p=getP(e);
   ghost.style.left=p.x+"px";ghost.style.top=p.y+"px";
   if(p.y<50)window.scrollBy(0,-6);else if(p.y>window.innerHeight-50)window.scrollBy(0,6);
 
-  // Find which column and vertical position
   document.querySelectorAll(".tblock").forEach(el=>el.style.outline="");
   dropInfo=null;
   const cols=document.querySelectorAll(".day-col");
@@ -351,9 +368,7 @@ function onMoveGlobal(e){
       const body=col.querySelector(".day-col-body");
       const br=body.getBoundingClientRect();
       const relY=p.y-br.top+body.scrollTop;
-      // Convert Y to minute position
       let targetMin=START_HOUR*60+relY/PX_PER_MIN;
-      // Find insert index
       const positions=computePositions(dayName);
       let insertIdx=positions.length;
       for(let i=0;i<positions.length;i++){
@@ -361,7 +376,6 @@ function onMoveGlobal(e){
         if(targetMin<mid){insertIdx=i;break;}
       }
       dropInfo={day:dayName,idx:insertIdx};
-      // Visual feedback
       if(positions[insertIdx]){
         const el=document.querySelector(`[data-tid="${positions[insertIdx].task.id}"]`);
         if(el)el.style.outline="2px solid #111";
@@ -373,7 +387,18 @@ function onMoveGlobal(e){
 
 function onUpGlobal(){
   if(resizing){endResize();return;}
-  if(longPress){clearTimeout(longPress);longPress=null;lpData=null;}
+  if(longPress){clearTimeout(longPress);longPress=null;}
+
+  // If pointer was down but never moved → it's a CLICK → open modal
+  if(ptrDown&&!ptrDown.moved&&!drag){
+    const{day,idx}=ptrDown;
+    ptrDown=null;lpData=null;
+    S.selTask={day,idx};render();
+    return;
+  }
+
+  ptrDown=null;lpData=null;
+
   if(!drag){return;}
   document.querySelectorAll(".tblock").forEach(el=>{el.style.outline="";el.classList.remove("dragging")});
   if(dropInfo&&S.sched){
@@ -504,7 +529,7 @@ function renderTimeline(wd,td){
       const hasExtra=e.userDesc||e.note;
 
       tl+=`<div class="tblock ${e.done?"done":""}" data-tid="${t.id}" style="top:${y}px;height:${height}px;background:${col}18;border-left:3px solid ${col}"
-        onclick="openTask('${day}',${i})" onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
+        onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
         <div class="tb-top">
           <div class="tb-check ${e.done?"checked":""}" onclick="event.stopPropagation();tgD('${t.id}')"></div>
           <span class="tb-icon">${t.icon}</span>
@@ -639,15 +664,26 @@ window.resetW=()=>{if(!confirm("Resetar tudo desta semana?"))return;S.data={};S.
 window.addMemo=()=>{const el=document.getElementById("memo-in");if(!el||!el.value.trim())return;S.memos.push({text:el.value.trim(),done:false});saveM();render();setTimeout(()=>{const i=document.getElementById("memo-in");if(i)i.focus()},50)};
 window.tgMemo=(i)=>{S.memos[i].done=!S.memos[i].done;saveM();render()};
 window.delMemo=(i)=>{S.memos.splice(i,1);saveM();render()};
-window.onMD=(e,d,i)=>{if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;startDragBlock(e,d,i)};
-window.onTS=(e,d,i)=>{if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;lpData={e,d,i};longPress=setTimeout(()=>{startDragBlock(lpData.e,lpData.d,lpData.i);if(navigator.vibrate)navigator.vibrate(30)},250)};
-window.startR=(e,d,i)=>{startResize(e,d,i)};
+window.onMD=(e,d,i)=>{
+  if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;
+  e.preventDefault();
+  ptrDown={day:d,idx:i,pos:getP(e),moved:false};
+};
+window.onTS=(e,d,i)=>{
+  if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;
+  const pos=getP(e);
+  ptrDown={day:d,idx:i,pos,moved:false};
+  lpData={day:d,idx:i,pos};
+  longPress=setTimeout(()=>{
+    if(ptrDown&&!ptrDown.moved){
+      ptrDown.moved=true;
+      actuallyStartDrag(d,i,pos);
+      if(navigator.vibrate)navigator.vibrate(30);
+    }
+  },300);
+};
+window.startR=(e,d,i)=>{ptrDown=null;startResize(e,d,i)};
 
-// Modal: open on click (only if not dragging)
-let didDrag=false;
-const origStartDrag=startDragBlock;
-startDragBlock=function(e,day,idx){didDrag=true;origStartDrag(e,day,idx)};
-window.openTask=(day,idx)=>{if(didDrag){didDrag=false;return;}S.selTask={day,idx};render()};
 window.closeTask=(e)=>{if(e&&e.target&&!e.target.classList.contains("modal-overlay"))return;S.selTask=null;render()};
 window.saveTask=(id,day,idx)=>{
   const desc=document.getElementById("m-desc")?.value||"";
