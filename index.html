@@ -179,6 +179,29 @@ button{font-family:inherit}
 .sb-notes h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#111;margin-bottom:8px}
 .sb-note{padding:4px 6px;background:#FFFDE7;border-radius:4px;margin-bottom:4px;border-left:2px solid #EAB308;font-size:10px;color:#666;line-height:1.4}
 .sb-note .sn-task{font-weight:600;color:#444}
+
+/* ═══ LUNCH BLOCK ═══ */
+.lunch-block{
+  position:absolute;left:3px;right:3px;border-radius:6px;
+  background:repeating-linear-gradient(135deg,#F5F5F5,#F5F5F5 4px,#EFEFEF 4px,#EFEFEF 5px);
+  border:1px dashed #DDD;display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:#BBB;font-weight:600;letter-spacing:.3px;z-index:1;pointer-events:none;
+}
+
+/* ═══ TASK MODAL ═══ */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#FFF;border-radius:14px;padding:20px;max-width:400px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
+.modal h3{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.modal .close-btn{margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:#999;padding:0 4px}
+.modal .field{margin-bottom:12px}
+.modal .field label{display:block;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.modal .field input,.modal .field textarea,.modal .field select{width:100%;padding:8px 10px;border:1px solid #E5E5E5;border-radius:6px;font-size:12px;font-family:inherit;outline:none;background:#FFF}
+.modal .field input:focus,.modal .field textarea:focus{border-color:#999}
+.modal .field textarea{resize:vertical;min-height:60px}
+.modal .field-row{display:flex;gap:8px}
+.modal .field-row .field{flex:1}
+.modal .save-btn{background:#111;color:#FFF;border:none;border-radius:8px;padding:10px 0;width:100%;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;margin-top:4px}
+.modal .task-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -231,7 +254,7 @@ const DS={
   ],
 };
 
-let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null,memos:[]};
+let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null,memos:[],selTask:null};
 
 function getWeekKey(d){d=new Date(d);const dy=d.getDay(),df=d.getDate()-dy+(dy===0?-6:1);const m=new Date(d.setDate(df));return`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}-${String(m.getDate()).padStart(2,"0")}`}
 function weekDates(w){const[y,m,d]=w.split("-").map(Number);const mn=new Date(y,m-1,d);return DAYS.map((_,i)=>{const t=new Date(mn);t.setDate(mn.getDate()+i);return`${String(t.getDate()).padStart(2,"0")}/${String(t.getMonth()+1).padStart(2,"0")}`})}
@@ -253,16 +276,13 @@ function allT(){return Object.values(S.sched).flat()}
 function dStats(day){const t=S.sched[day],dn=t.filter(x=>S.data[x.id]?.done).length;return{done:dn,total:t.length,pct:t.length?Math.round(dn/t.length*100):0}}
 
 // ══════ Compute timeline positions ══════
-// Tasks flow sequentially: 8h start, skip 12–14 lunch automatically
 function computePositions(day){
   const tasks=S.sched[day];
-  let cursor=START_HOUR*60; // minutes from midnight
+  let cursor=START_HOUR*60;
   const positions=[];
   for(const t of tasks){
     const mins=S.data[t.id]?.realMins??t.mins;
-    // If cursor hits lunch, jump over it
     if(cursor<LUNCH_START*60 && cursor+mins>LUNCH_START*60){
-      // Fits before lunch?
       if(cursor>=LUNCH_START*60){cursor=LUNCH_END*60;}
     }
     if(cursor>=LUNCH_START*60 && cursor<LUNCH_END*60) cursor=LUNCH_END*60;
@@ -272,15 +292,15 @@ function computePositions(day){
   return positions;
 }
 
+// Lunch position: find if any task ends before lunch
+function lunchY(){return minToY(LUNCH_START*60)}
+function lunchH(){return(LUNCH_END-LUNCH_START)*60*PX_PER_MIN}
+
 function minToY(min){
-  // Convert absolute minutes to Y position, collapsing lunch
-  let m=min-START_HOUR*60;
-  if(min>=LUNCH_END*60) m-=(LUNCH_END-LUNCH_START)*60;
-  else if(min>=LUNCH_START*60) m=((LUNCH_START-START_HOUR)*60);
-  return m*PX_PER_MIN;
+  // Direct mapping — lunch is visible now
+  return (min-START_HOUR*60)*PX_PER_MIN;
 }
 function totalHeight(){
-  // Max end across all days
   let maxEnd=18*60;
   for(const day of DAYS){
     const pos=computePositions(day);
@@ -332,8 +352,6 @@ function onMoveGlobal(e){
       const relY=p.y-br.top+body.scrollTop;
       // Convert Y to minute position
       let targetMin=START_HOUR*60+relY/PX_PER_MIN;
-      // Account for lunch gap
-      if(relY>=(LUNCH_START-START_HOUR)*60*PX_PER_MIN) targetMin+=(LUNCH_END-LUNCH_START)*60;
       // Find insert index
       const positions=computePositions(dayName);
       let insertIdx=positions.length;
@@ -427,11 +445,10 @@ function renderTimeline(wd,td){
   const th=totalHeight();
   const hours=[];
   for(let hr=START_HOUR;hr<=20;hr++){
-    if(hr>=LUNCH_START&&hr<LUNCH_END)continue;
     hours.push({hr,y:minToY(hr*60)});
   }
 
-  // Sidebar: memos + task notes
+  // Sidebar
   let sb=`<div class="tl-sidebar"><div class="sidebar-card">
     <h3>📌 lembretes</h3>
     <div class="memo-add"><input type="text" id="memo-in" placeholder="adicionar lembrete..." onkeydown="if(event.key==='Enter')addMemo()"><button onclick="addMemo()">+</button></div>
@@ -445,8 +462,6 @@ function renderTimeline(wd,td){
     </div>`;
   });
   sb+=`</div>`;
-
-  // Task notes from this week
   const allNotes=allT().filter(t=>S.data[t.id]?.note);
   if(allNotes.length){
     sb+=`<div class="sb-notes"><h3>📝 notas das tarefas</h3>`;
@@ -470,9 +485,13 @@ function renderTimeline(wd,td){
       <div class="day-col-body" style="height:${th}px;position:relative">`;
 
     hours.forEach(({hr,y})=>{tl+=`<div class="hour-line" style="top:${y}px"></div>`;});
-    const ly=minToY(LUNCH_START*60);
-    tl+=`<div class="lunch-zone" style="top:${ly}px;height:4px"></div>`;
 
+    // Lunch block
+    const ly=minToY(LUNCH_START*60);
+    const lh=(LUNCH_END-LUNCH_START)*60*PX_PER_MIN;
+    tl+=`<div class="lunch-block" style="top:${ly}px;height:${lh}px">🍽️ almoço</div>`;
+
+    // Task blocks
     pos.forEach((p,i)=>{
       const t=p.task,e=S.data[t.id]||{done:false};
       const col=CC[t.cat]||"#999";
@@ -480,13 +499,15 @@ function renderTimeline(wd,td){
       const height=p.mins*PX_PER_MIN;
       const showTime=height>=28;
       const endMin=p.startMin+p.mins;
+      const hasDesc=S.data[t.id]?.userDesc;
 
       tl+=`<div class="tblock ${e.done?"done":""}" data-tid="${t.id}" style="top:${y}px;height:${height}px;background:${col}18;border-left:3px solid ${col}"
-        onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
+        onclick="openTask('${day}',${i})" onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
         <div class="tb-top">
           <div class="tb-check ${e.done?"checked":""}" onclick="event.stopPropagation();tgD('${t.id}')"></div>
           <span class="tb-icon">${t.icon}</span>
           <span class="tb-name">${t.task}</span>
+          ${hasDesc?'<span style="font-size:7px;color:'+col+'">●</span>':""}
         </div>`;
       if(showTime) tl+=`<div class="tb-time">${timeLabel(p.startMin)}–${timeLabel(endMin)} · ${fmtM(p.mins)}</div>`;
       tl+=`<div class="tb-resize" onmousedown="startR(event,'${day}',${i})" ontouchstart="startR(event,'${day}',${i})"></div>`;
@@ -497,7 +518,35 @@ function renderTimeline(wd,td){
   });
   tl+=`</div></div>`;
 
-  return `<div class="tl-layout">${tl}${sb}</div>`;
+  // Modal
+  let modal="";
+  if(S.selTask){
+    const{day,idx}=S.selTask;
+    const t=S.sched[day][idx];
+    if(t){
+      const e=S.data[t.id]||{done:false,note:"",realMins:null,userDesc:""};
+      const col=CC[t.cat]||"#999";
+      const pos=computePositions(day);
+      const p=pos[idx];
+      const startH=Math.floor(p.startMin/60),startM=p.startMin%60;
+      const durMins=e.realMins??t.mins;
+      modal=`<div class="modal-overlay" onclick="closeTask(event)"><div class="modal" onclick="event.stopPropagation()">
+        <h3><div class="task-color" style="background:${col}"></div>${t.icon} ${t.task}<button class="close-btn" onclick="closeTask()">✕</button></h3>
+        <div class="field"><label>descrição</label><textarea id="m-desc" placeholder="adicione uma descrição...">${esc(e.userDesc||t.desc)}</textarea></div>
+        <div class="field-row">
+          <div class="field"><label>duração (min)</label><input type="number" id="m-dur" value="${durMins}" min="15" step="15"></div>
+          <div class="field"><label>nota rápida</label><input type="text" id="m-note" value="${esc(e.note||"")}" placeholder="ex: ficou pra amanhã"></div>
+        </div>
+        <div class="field"><label>mover para dia</label>
+          <div style="display:flex;gap:4px">${DAYS.map(d=>`<button onclick="moveTask('${day}',${idx},'${d}')" style="flex:1;padding:6px 0;border-radius:6px;cursor:pointer;border:${d===day?"1.5px solid #111":"1px solid #DDD"};background:${d===day?"#111":"#FFF"};color:${d===day?"#FFF":"#111"};font-size:11px;font-weight:600;font-family:inherit">${d}</button>`).join("")}</div>
+        </div>
+        ${t.auto?`<div style="margin-top:8px;padding:6px 8px;background:#F8F8F8;border-radius:6px;border-left:2px solid #DDD"><div style="font-size:9px;font-weight:700;color:#BBB;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">⚡ automação</div><p style="font-size:11px;color:#666;line-height:1.5;margin:0">${t.auto}</p></div>`:""}
+        <button class="save-btn" onclick="saveTask('${t.id}','${day}',${idx})">salvar</button>
+      </div></div>`;
+    }
+  }
+
+  return `<div class="tl-layout">${tl}${sb}</div>${modal}`;
 }
 
 function renderDay(wd,td){
@@ -589,6 +638,31 @@ window.delMemo=(i)=>{S.memos.splice(i,1);saveM();render()};
 window.onMD=(e,d,i)=>{if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;startDragBlock(e,d,i)};
 window.onTS=(e,d,i)=>{if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;lpData={e,d,i};longPress=setTimeout(()=>{startDragBlock(lpData.e,lpData.d,lpData.i);if(navigator.vibrate)navigator.vibrate(30)},250)};
 window.startR=(e,d,i)=>{startResize(e,d,i)};
+
+// Modal: open on click (only if not dragging)
+let didDrag=false;
+const origStartDrag=startDragBlock;
+startDragBlock=function(e,day,idx){didDrag=true;origStartDrag(e,day,idx)};
+window.openTask=(day,idx)=>{if(didDrag){didDrag=false;return;}S.selTask={day,idx};render()};
+window.closeTask=(e)=>{if(e&&e.target&&!e.target.classList.contains("modal-overlay"))return;S.selTask=null;render()};
+window.saveTask=(id,day,idx)=>{
+  const desc=document.getElementById("m-desc")?.value||"";
+  const dur=parseInt(document.getElementById("m-dur")?.value);
+  const note=document.getElementById("m-note")?.value||"";
+  if(!S.data[id])S.data[id]={done:false,note:"",realMins:null,userDesc:""};
+  S.data[id].userDesc=desc;
+  S.data[id].note=note;
+  if(!isNaN(dur)&&dur>=15)S.data[id].realMins=dur;
+  S.selTask=null;saveD();render();
+};
+window.moveTask=(fromDay,idx,toDay)=>{
+  if(fromDay===toDay)return;
+  const ns=JSON.parse(JSON.stringify(S.sched));
+  const[item]=ns[fromDay].splice(idx,1);
+  ns[toDay].push(item);
+  S.sched=ns;S.selTask={day:toDay,idx:ns[toDay].length-1};
+  saveS();render();
+};
 
 load();render();
 </script>
