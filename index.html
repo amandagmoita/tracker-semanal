@@ -240,8 +240,7 @@ const DS={
     {id:"seg-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, design e finalizar post #1 @amandag.ia.",auto:"Claude Cowork: Roteirista Viral + Analista de Instagram.",mins:120},
     {id:"seg-3",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
     {id:"seg-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Processar pedidos, SAC, estoque e envios.",auto:"n8n: Shopify → Sheets + alertas estoque.",mins:90},
-    {id:"seg-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Estruturar módulos do curso nov/26.",mins:60},
-    {id:"seg-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Pesquisar referências, testar ferramentas para o curso.",mins:60},
+    {id:"seg-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Estruturar módulos do curso, pesquisar referências, testar ferramentas para nov/26.",mins:120},
   ],
   Ter:[
     {id:"ter-1",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Ferramentas novas, updates, insights.",auto:"Apify: scraping Product Hunt + newsletters.",mins:60},
@@ -290,7 +289,38 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 function dk(){return"tv3:d:"+S.week}
 function sk(){return"tv3:s:"+S.week}
 function mk(){return"tv3:m:"+S.week}
-function load(){try{const d=localStorage.getItem(dk());S.data=d?JSON.parse(d):{}}catch{S.data={}}try{const s=localStorage.getItem(sk());S.sched=s?JSON.parse(s):JSON.parse(JSON.stringify(DS))}catch{S.sched=JSON.parse(JSON.stringify(DS))}try{const m=localStorage.getItem(mk());S.memos=m?JSON.parse(m):[]}catch{S.memos=[]}}
+
+// Week number: returns ISO week number for alternating weeks
+function getWeekNumber(weekKey){
+  const[y,m,d]=weekKey.split("-").map(Number);
+  const date=new Date(y,m-1,d);
+  const jan1=new Date(date.getFullYear(),0,1);
+  const days=Math.floor((date-jan1)/(24*60*60*1000));
+  return Math.ceil((days+jan1.getDay()+1)/7);
+}
+function isWeekA(weekKey){return getWeekNumber(weekKey)%2===0}
+
+function getDefaultSchedule(weekKey){
+  const sched=JSON.parse(JSON.stringify(DS));
+  // Auto-alternate Tuesday afternoon
+  const wA=isWeekA(weekKey);
+  // Find the alternating block (ter-4)
+  const terIdx=sched.Ter.findIndex(t=>t.id==="ter-4");
+  if(terIdx>=0){
+    if(wA){
+      sched.Ter[terIdx]={id:"ter-4",task:"📦 Estoque (Semana A)",icon:"📦",cat:"ecom",desc:"Embalar pedidos no estoque. Semana A — quinzenal.",mins:120};
+    } else {
+      sched.Ter[terIdx]={id:"ter-4",task:"🧠 Estudo IA (Semana B)",icon:"🧠",cat:"estudo",desc:"Estudo aprofundado de IA. Semana B — quinzenal.",mins:120};
+    }
+  }
+  return sched;
+}
+
+function load(){
+  try{const d=localStorage.getItem(dk());S.data=d?JSON.parse(d):{}}catch{S.data={}}
+  try{const s=localStorage.getItem(sk());S.sched=s?JSON.parse(s):getDefaultSchedule(S.week)}catch{S.sched=getDefaultSchedule(S.week)}
+  try{const m=localStorage.getItem(mk());S.memos=m?JSON.parse(m):[]}catch{S.memos=[]}
+}
 function saveD(){localStorage.setItem(dk(),JSON.stringify(S.data))}
 function saveS(){localStorage.setItem(sk(),JSON.stringify(S.sched))}
 function saveM(){localStorage.setItem(mk(),JSON.stringify(S.memos))}
@@ -320,8 +350,15 @@ function lunchY(){return minToY(LUNCH_START*60)}
 function lunchH(){return(LUNCH_END-LUNCH_START)*60*PX_PER_MIN}
 
 function minToY(min){
-  // Direct mapping — lunch is visible now
-  return (min-START_HOUR*60)*PX_PER_MIN;
+  // Lunch gap rendered at half size for compactness
+  let m=min-START_HOUR*60;
+  if(min>=LUNCH_END*60){
+    // Subtract half the lunch duration to compress
+    m-=(LUNCH_END-LUNCH_START)*60*0.5;
+  } else if(min>LUNCH_START*60 && min<LUNCH_END*60){
+    m=(LUNCH_START-START_HOUR)*60;
+  }
+  return m*PX_PER_MIN;
 }
 function totalHeight(){
   let maxEnd=18*60;
@@ -476,8 +513,12 @@ function render(){
   const dn=all.filter(t=>S.data[t.id]?.done).length;
   const pct=all.length?Math.round(dn/all.length*100):0;
 
+  const wType=isWeekA(S.week)?"A":"B";
+  const wLabel=wType==="A"?"Semana A · 📦 Estoque na terça":"Semana B · 🧠 Estudo IA na terça";
+
   let h=`<div class="header"><h1>📋 tracker semanal</h1><p>calendário estratégico · amanda</p></div>
   <div class="week-nav"><button onclick="chgW(-1)">‹</button><span>${fmtW(S.week)}</span><button onclick="chgW(1)">›</button></div>
+  <div style="text-align:center;margin-bottom:12px"><span style="font-size:10px;font-weight:600;color:#FFF;background:${wType==="A"?"#EAB308":"#8B5CF6"};padding:3px 10px;border-radius:10px;letter-spacing:.3px">${wLabel}</span></div>
   <div class="progress"><div class="progress-top"><span class="lbl">${dn}/${all.length} atividades</span><span class="pct">${pct}%</span></div><div class="pbar"><div class="pfill" style="width:${pct}%"></div></div></div>
   <div class="tabs">${["semana","dia","resumo","automacoes"].map(v=>{const lb={semana:"📅 semana",dia:"📝 dia",resumo:"📊 resumo",automacoes:"⚡ automações"};return`<button class="${S.view===v?"active":""}" onclick="setV('${v}')">${lb[v]}</button>`}).join("")}</div>`;
 
@@ -534,9 +575,9 @@ function renderTimeline(wd,td){
 
     hours.forEach(({hr,y})=>{tl+=`<div class="hour-line" style="top:${y}px"></div>`;});
 
-    // Lunch block
+    // Lunch block (half height for compactness)
     const ly=minToY(LUNCH_START*60);
-    const lh=(LUNCH_END-LUNCH_START)*60*PX_PER_MIN;
+    const lh=(LUNCH_END-LUNCH_START)*60*PX_PER_MIN*0.5;
     tl+=`<div class="lunch-block" style="top:${ly}px;height:${lh}px">🍽️ almoço</div>`;
 
     // Task blocks
@@ -704,7 +745,7 @@ window.tgN=(id)=>{S.enote=S.enote===id?null:id;S.etime=null;render();if(S.enote)
 window.tgT=(id)=>{S.etime=S.etime===id?null:id;S.enote=null;render();if(S.etime)setTimeout(()=>{const el=document.getElementById("ti");if(el)el.focus()},50)};
 window.sN=(id)=>{const el=document.getElementById("ni");if(!el)return;if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};S.data[id].note=el.value;S.enote=null;saveD();render()};
 window.sT=(id)=>{const el=document.getElementById("ti");if(!el)return;const v=parseInt(el.value);if(isNaN(v)||v<0)return;if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};S.data[id].realMins=v;S.etime=null;saveD();render()};
-window.resetW=()=>{if(!confirm("Resetar tudo desta semana?"))return;S.data={};S.sched=JSON.parse(JSON.stringify(DS));S.memos=[];localStorage.removeItem(dk());localStorage.removeItem(sk());localStorage.removeItem(mk());render()};
+window.resetW=()=>{if(!confirm("Resetar tudo desta semana?"))return;S.data={};S.sched=getDefaultSchedule(S.week);S.memos=[];localStorage.removeItem(dk());localStorage.removeItem(sk());localStorage.removeItem(mk());render()};
 window.addMemo=()=>{const el=document.getElementById("memo-in");if(!el||!el.value.trim())return;S.memos.push({text:el.value.trim(),done:false});saveM();render();setTimeout(()=>{const i=document.getElementById("memo-in");if(i)i.focus()},50)};
 window.tgMemo=(i)=>{S.memos[i].done=!S.memos[i].done;saveM();render()};
 window.delMemo=(i)=>{S.memos.splice(i,1);saveM();render()};
