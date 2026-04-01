@@ -240,14 +240,14 @@ const DS={
     {id:"seg-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, design e finalizar post #1 @amandag.ia.",auto:"Claude Cowork: Roteirista Viral + Analista de Instagram.",mins:120},
     {id:"seg-3",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
     {id:"seg-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Processar pedidos, SAC, estoque e envios.",auto:"n8n: Shopify → Sheets + alertas estoque.",mins:90},
-    {id:"seg-5",task:"Engajamento redes",icon:"📱",cat:"social",desc:"DMs, comentários, perfis estratégicos.",auto:"n8n: notificação DMs pendentes.",mins:60},
-    {id:"seg-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Estruturar módulos do curso nov/26.",mins:60},
+    {id:"seg-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Estruturar módulos do curso nov/26.",mins:60},
+    {id:"seg-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Pesquisar referências, testar ferramentas para o curso.",mins:60},
   ],
   Ter:[
     {id:"ter-1",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Ferramentas novas, updates, insights.",auto:"Apify: scraping Product Hunt + newsletters.",mins:60},
     {id:"ter-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, design e finalizar post #2.",auto:"Claude Cowork: análise de concorrentes.",mins:120},
     {id:"ter-3",task:"Criação / Revisão",icon:"✍️",cat:"ia",desc:"Finalizar post, revisar equipe VA.",mins:60},
-    {id:"ter-4",task:"Agendar posts",icon:"📱",cat:"social",desc:"Programar posts, verificar horários.",auto:"n8n: post automático melhores horários.",mins:60},
+    {id:"ter-4",task:"Semana A: Estoque",icon:"📦",cat:"ecom",desc:"Embalar pedidos no estoque (a cada 2 semanas). Na semana alternada, usar para Estudo IA.",mins:120},
     {id:"ter-5",task:"Reunião VA",icon:"🤝",cat:"reuniao",desc:"Funil Serena, métricas, próximos passos.",auto:"n8n: dashboard vendas Serena.",mins:60},
     {id:"ter-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Referências de grade, testar ferramentas.",mins:60},
   ],
@@ -256,7 +256,7 @@ const DS={
     {id:"qua-2",task:"Criação @vida.autoral",icon:"✍️",cat:"va",desc:"Roteirizar e finalizar post #1 VA.",auto:"Claude Cowork: skill Vida Autoral Brand.",mins:120},
     {id:"qua-3",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
     {id:"qua-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Pedidos, SAC, catálogo.",mins:90},
-    {id:"qua-5",task:"Engajamento redes",icon:"📱",cat:"social",desc:"DMs, comentários, interações.",mins:60},
+    {id:"qua-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Continuar estruturação de módulos, gravar aulas-piloto.",mins:60},
     {id:"qua-6",task:"Admin",icon:"📧",cat:"admin",desc:"Emails, pendências, organização.",auto:"n8n: resumo emails não respondidos.",mins:60},
   ],
   Qui:[
@@ -264,8 +264,8 @@ const DS={
     {id:"qui-2",task:"Criação @vida.autoral",icon:"✍️",cat:"va",desc:"Roteirizar e finalizar post #2 VA.",mins:120},
     {id:"qui-3",task:"Criação / Revisão",icon:"✍️",cat:"va",desc:"Finalizar VA, revisar equipe.",mins:60},
     {id:"qui-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Pedidos, relatório pra reunião.",auto:"n8n: relatório Shopify pré-reunião.",mins:90},
-    {id:"qui-5",task:"Reunião Ecommerce",icon:"🤝",cat:"reuniao",desc:"Métricas, problemas, decisões.",mins:60},
-    {id:"qui-6",task:"Admin",icon:"📧",cat:"admin",desc:"Emails, pendências, pautas.",mins:60},
+    {id:"qui-5",task:"Reunião Ecommerce",icon:"🤝",cat:"reuniao",desc:"Reunião fixa 16h–17h: métricas, problemas, decisões.",mins:60},
+    {id:"qui-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Revisão de progresso, próximos módulos.",mins:60},
   ],
   Sex:[
     {id:"sex-1",task:"Rotina + Planejamento",icon:"☕",cat:"admin",desc:"Revisar entregas, pendências.",mins:60},
@@ -549,7 +549,7 @@ function renderTimeline(wd,td){
       const showNote=height>=45 && e.note;
       const endMin=p.startMin+p.mins;
       const hasExtra=e.userDesc||e.note;
-      const hasLinks=e.links&&e.links.length>0;
+      const hasLinks=S.data[t.id]?.links?.filter(l=>l.url)?.length>0;
 
       tl+=`<div class="tblock ${e.done?"done":""}" data-tid="${t.id}" style="top:${y}px;height:${height}px;background:${col}18;border-left:3px solid ${col}"
         onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
@@ -605,8 +605,11 @@ function renderTimeline(wd,td){
             <button onclick="newGoogleFile('slides','${t.id}','${esc(t.task)}')"><span class="lq-icon">📽️</span> Novo Slides</button>
           </div>
           <div class="link-list">${(e.links||[]).map((lk,li)=>{
-            const ico=getLinkIcon(lk.url);
+            const ico=lk.pending&&!lk.url?"⏳":getLinkIcon(lk.url);
             const name=lk.name||extractLinkName(lk.url);
+            if(lk.pending&&!lk.url){
+              return`<div class="link-item" style="background:#FFF9E6;border:1px dashed #EAB308"><span class="li-icon">${ico}</span><span style="flex:1;font-size:10px;color:#92690B">${esc(name)} — cole a URL acima e clique anexar</span><button class="li-del" onclick="removeLink('${t.id}',${li})">✕</button></div>`;
+            }
             return`<div class="link-item"><span class="li-icon">${ico}</span><span class="li-name" onclick="window.open('${esc(lk.url)}','_blank')">${esc(name)}</span><button class="li-del" onclick="removeLink('${t.id}',${li})">✕</button></div>`;
           }).join("")}${!(e.links&&e.links.length)?'<div style="font-size:10px;color:#CCC;text-align:center;padding:4px 0">nenhum link anexado</div>':""}</div>
         </div>
@@ -767,10 +770,16 @@ window.addLink=(id)=>{
   if(!url.startsWith("http"))url="https://"+url;
   if(!S.data[id])S.data[id]={done:false,note:"",realMins:null,userDesc:"",links:[]};
   if(!S.data[id].links)S.data[id].links=[];
-  S.data[id].links.push({url,name:""});
+  // Check if there's a pending link to update
+  const pendingIdx=S.data[id].links.findIndex(l=>l.pending&&!l.url);
+  if(pendingIdx>=0){
+    S.data[id].links[pendingIdx].url=url;
+    S.data[id].links[pendingIdx].pending=false;
+  } else {
+    S.data[id].links.push({url,name:""});
+  }
   saveD();render();
-  // Reopen modal
-  setTimeout(()=>{const inp=document.getElementById("m-link");if(inp)inp.focus()},80);
+  setTimeout(()=>{const inp=document.getElementById("m-link");if(inp){inp.value="";inp.focus();}},80);
 };
 
 window.removeLink=(id,idx)=>{
@@ -780,21 +789,27 @@ window.removeLink=(id,idx)=>{
 };
 
 window.newGoogleFile=(type,id,taskName)=>{
+  // These URLs create a NEW file and redirect to it with a real URL
   const urls={
-    doc:`https://docs.google.com/document/create`,
-    sheet:`https://docs.google.com/spreadsheets/create`,
-    slides:`https://docs.google.com/presentation/create`,
+    doc:"https://docs.google.com/document/create?usp=sheets_home&oi=doc",
+    sheet:"https://docs.google.com/spreadsheets/create?usp=sheets_home",
+    slides:"https://docs.google.com/presentation/create?usp=slides_home",
   };
   const newUrl=urls[type];
   if(!newUrl)return;
-  // Open new file in new tab
-  const w=window.open(newUrl,"_blank");
-  // Auto-add to links
+  // Open new file — Google will redirect to the actual doc URL
+  window.open(newUrl,"_blank");
+  // Add a placeholder — user should paste real URL after
   if(!S.data[id])S.data[id]={done:false,note:"",realMins:null,userDesc:"",links:[]};
   if(!S.data[id].links)S.data[id].links=[];
-  const names={doc:"Google Doc",sheet:"Google Sheet",slides:"Google Slides"};
-  S.data[id].links.push({url:newUrl,name:names[type]+" — "+taskName});
+  const names={doc:"📄 Google Doc",sheet:"📊 Google Sheet",slides:"📽️ Google Slides"};
+  S.data[id].links.push({url:"",name:names[type]+" — "+taskName,pending:true});
   saveD();render();
+  // Focus the link input so user can paste the real URL
+  setTimeout(()=>{
+    const inp=document.getElementById("m-link");
+    if(inp){inp.placeholder="cole a URL do arquivo criado aqui...";inp.focus();}
+  },100);
 };
 
 window.closeTask=(e)=>{if(e&&e.target&&!e.target.classList.contains("modal-overlay"))return;S.selTask=null;render()};
