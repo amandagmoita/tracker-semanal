@@ -241,6 +241,9 @@ button{font-family:inherit}
 
 /* Link indicator in timeline block */
 .tb-link{font-size:7px;opacity:.6;margin-left:2px}
+.tb-close{position:absolute;top:1px;right:2px;background:none;border:none;font-size:9px;color:rgba(0,0,0,.2);cursor:pointer;padding:2px 3px;line-height:1;z-index:2;border-radius:3px}
+.tb-close:hover{color:rgba(0,0,0,.5);background:rgba(0,0,0,.05)}
+.tblock.dismissed{display:none}
 </style>
 </head>
 <body>
@@ -256,13 +259,13 @@ const DS={
     {id:"seg-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, design e finalizar post #1 @amandag.ia.",auto:"Claude Cowork: Roteirista Viral + Analista de Instagram.",mins:120},
     {id:"seg-3",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
     {id:"seg-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Processar pedidos, SAC, estoque e envios.",auto:"n8n: Shopify → Sheets + alertas estoque.",mins:90},
-    {id:"seg-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Estruturar módulos do curso, pesquisar referências, testar ferramentas para nov/26.",mins:120},
+    {id:"seg-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Estruturar módulos do curso, pesquisar referências, testar ferramentas para nov/26.",mins:150},
   ],
   Ter:[
     {id:"ter-1",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Ferramentas novas, updates, insights.",auto:"Apify: scraping Product Hunt + newsletters.",mins:60},
     {id:"ter-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, design e finalizar post #2.",auto:"Claude Cowork: análise de concorrentes.",mins:120},
     {id:"ter-3",task:"Criação / Revisão",icon:"✍️",cat:"ia",desc:"Finalizar post, revisar equipe VA.",mins:60},
-    {id:"ter-4",task:"Semana A: Estoque",icon:"📦",cat:"ecom",desc:"Embalar pedidos no estoque (a cada 2 semanas). Na semana alternada, usar para Estudo IA.",mins:120},
+    {id:"ter-4",task:"Semana A: Estoque",icon:"📦",cat:"ecom",desc:"Embalar pedidos no estoque (a cada 2 semanas). Na semana alternada: Estudo IA.",mins:120},
     {id:"ter-5",task:"Reunião VA",icon:"🤝",cat:"reuniao",desc:"Funil Serena, métricas, próximos passos.",auto:"n8n: dashboard vendas Serena.",mins:60},
     {id:"ter-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Referências de grade, testar ferramentas.",mins:60},
   ],
@@ -271,8 +274,7 @@ const DS={
     {id:"qua-2",task:"Criação @vida.autoral",icon:"✍️",cat:"va",desc:"Roteirizar e finalizar post #1 VA.",auto:"Claude Cowork: skill Vida Autoral Brand.",mins:120},
     {id:"qua-3",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
     {id:"qua-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Pedidos, SAC, catálogo.",mins:90},
-    {id:"qua-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Continuar estruturação de módulos, gravar aulas-piloto.",mins:60},
-    {id:"qua-6",task:"Admin",icon:"📧",cat:"admin",desc:"Emails, pendências, organização.",auto:"n8n: resumo emails não respondidos.",mins:60},
+    {id:"qua-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Continuar estruturação de módulos, gravar aulas-piloto.",mins:120},
   ],
   Qui:[
     {id:"qui-1",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Testar ferramentas, documentar.",auto:"Apify + Claude: ganchos virais.",mins:60},
@@ -343,8 +345,8 @@ function saveS(){localStorage.setItem(sk(),JSON.stringify(S.sched))}
 function saveM(){localStorage.setItem(mk(),JSON.stringify(S.memos))}
 function saveSL(){localStorage.setItem("tv3:sidelinks",JSON.stringify(S.sideLinks))}
 
-function allT(){return Object.values(S.sched).flat()}
-function dStats(day){const t=S.sched[day],dn=t.filter(x=>S.data[x.id]?.done).length;return{done:dn,total:t.length,pct:t.length?Math.round(dn/t.length*100):0}}
+function allT(){return Object.values(S.sched).flat().filter(t=>!S.data[t.id]?.dismissed)}
+function dStats(day){const t=S.sched[day].filter(x=>!S.data[x.id]?.dismissed),dn=t.filter(x=>S.data[x.id]?.done).length;return{done:dn,total:t.length,pct:t.length?Math.round(dn/t.length*100):0}}
 
 // ══════ Compute timeline positions ══════
 function computePositions(day){
@@ -352,6 +354,7 @@ function computePositions(day){
   let cursor=START_HOUR*60;
   const positions=[];
   for(const t of tasks){
+    if(S.data[t.id]?.dismissed) continue; // skip dismissed
     const mins=S.data[t.id]?.realMins??t.mins;
     if(cursor<LUNCH_START*60 && cursor+mins>LUNCH_START*60){
       if(cursor>=LUNCH_START*60){cursor=LUNCH_END*60;}
@@ -625,6 +628,7 @@ function renderTimeline(wd,td){
     // Task blocks
     pos.forEach((p,i)=>{
       const t=p.task,e=S.data[t.id]||{done:false,note:"",realMins:null,userDesc:""};
+      if(S.data[t.id]?.dismissed) return; // skip dismissed
       const col=CC[t.cat]||"#999";
       const y=minToY(p.startMin);
       const height=p.mins*PX_PER_MIN;
@@ -636,6 +640,7 @@ function renderTimeline(wd,td){
 
       tl+=`<div class="tblock ${e.done?"done":""}" data-tid="${t.id}" style="top:${y}px;height:${height}px;background:${col}18;border-left:3px solid ${col}"
         onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
+        <button class="tb-close" onclick="event.stopPropagation();dismissTask('${day}',${i},'${t.id}')" title="Fechar evento">✕</button>
         <div class="tb-top">
           <div class="tb-check ${e.done?"checked":""}" onclick="event.stopPropagation();tgD('${t.id}')"></div>
           <span class="tb-icon">${t.icon}</span>
@@ -782,6 +787,13 @@ window.chgW=(n)=>{S.week=shiftW(S.week,n);S.exp=S.enote=S.etime=null;load();rend
 window.setV=(v)=>{S.view=v;S.exp=S.enote=S.etime=null;render()};
 window.setAD=(d)=>{S.activeDay=S.activeDay===d?null:d;render()};
 window.tgD=(id)=>{if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};S.data[id]={...S.data[id],done:!S.data[id].done};saveD();render()};
+
+window.dismissTask=(day,idx,id)=>{
+  if(!confirm("Remover este evento desta semana?"))return;
+  if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};
+  S.data[id].dismissed=true;
+  saveD();render();
+};
 window.tgE=(id)=>{S.exp=S.exp===id?null:id;render()};
 window.tgN=(id)=>{S.enote=S.enote===id?null:id;S.etime=null;render();if(S.enote)setTimeout(()=>{const el=document.getElementById("ni");if(el)el.focus()},50)};
 window.tgT=(id)=>{S.etime=S.etime===id?null:id;S.enote=null;render();if(S.etime)setTimeout(()=>{const el=document.getElementById("ti");if(el)el.focus()},50)};
