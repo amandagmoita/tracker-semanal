@@ -10,7 +10,7 @@
 body{font-family:'Inter',system-ui,sans-serif;background:#FAFAFA;color:#111;-webkit-font-smoothing:antialiased}
 button{font-family:inherit}
 
-.container{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
+.container{max-width:1400px;margin:0 auto;padding:20px 16px 60px}
 .header h1{font-size:20px;font-weight:700;letter-spacing:-.5px}
 .header p{font-size:11px;color:#999;margin-top:2px;letter-spacing:.3px}
 
@@ -31,9 +31,9 @@ button{font-family:inherit}
 
 /* ═══ TIMELINE ═══ */
 .timeline-wrap{display:flex;gap:0;overflow-x:auto;position:relative}
-.time-gutter{width:44px;flex-shrink:0;position:relative;padding-top:36px}
-.time-gutter .tick{position:absolute;left:0;width:100%;font-size:9px;color:#BBB;text-align:right;padding-right:6px;transform:translateY(-6px);font-variant-numeric:tabular-nums}
-.day-col{flex:1;min-width:140px;border-left:1px solid #F0F0F0;position:relative}
+.time-gutter{width:36px;flex-shrink:0;position:relative;padding-top:36px}
+.time-gutter .tick{position:absolute;left:0;width:100%;font-size:8px;color:#BBB;text-align:right;padding-right:4px;transform:translateY(-5px);font-variant-numeric:tabular-nums}
+.day-col{flex:1;min-width:120px;border-left:1px solid #F0F0F0;position:relative}
 .day-col-head{text-align:center;padding:6px 0;border-bottom:1px solid #E5E5E5;height:36px;position:sticky;top:0;background:#FAFAFA;z-index:2}
 .day-col-head.today{border-bottom:2px solid #111}
 .day-col-head .name{font-size:11px;font-weight:700}
@@ -43,29 +43,29 @@ button{font-family:inherit}
 .lunch-zone{position:absolute;left:0;right:0;background:repeating-linear-gradient(45deg,transparent,transparent 4px,#F8F8F8 4px,#F8F8F8 5px);pointer-events:none;z-index:0}
 
 .tblock{
-  position:absolute;left:3px;right:3px;border-radius:8px;padding:6px 8px;
+  position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 6px;
   cursor:grab;user-select:none;touch-action:none;overflow:hidden;
   border:1px solid rgba(0,0,0,.08);transition:opacity .15s;z-index:1;
 }
 .tblock.done{opacity:.45}
 .tblock.dragging{opacity:.2}
-.tblock .tb-top{display:flex;align-items:center;gap:4px}
-.tblock .tb-icon{font-size:12px;flex-shrink:0}
-.tblock .tb-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.tblock .tb-top{display:flex;align-items:center;gap:3px}
+.tblock .tb-icon{font-size:10px;flex-shrink:0}
+.tblock .tb-name{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
 .tblock.done .tb-name{text-decoration:line-through}
-.tblock .tb-time{font-size:9px;opacity:.7;margin-top:1px}
+.tblock .tb-time{font-size:8px;opacity:.7;margin-top:0}
 .tblock .tb-check{
-  width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(0,0,0,.2);
+  width:12px;height:12px;border-radius:2px;border:1.5px solid rgba(0,0,0,.2);
   flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  background:transparent;font-size:8px;color:#FFF;
+  background:transparent;font-size:7px;color:#FFF;
 }
 .tblock .tb-check.checked{background:rgba(0,0,0,.4);border:none}
 .tblock .tb-check.checked::after{content:'✓'}
 .tblock .tb-resize{
-  position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;
+  position:absolute;left:0;right:0;bottom:0;height:6px;cursor:ns-resize;
   display:flex;align-items:center;justify-content:center;
 }
-.tblock .tb-resize::after{content:'';width:20px;height:2px;background:rgba(0,0,0,.15);border-radius:1px}
+.tblock .tb-resize::after{content:'';width:16px;height:2px;background:rgba(0,0,0,.12);border-radius:1px}
 
 /* Ghost */
 .ghost{position:fixed;z-index:9999;pointer-events:none;background:#FFF;border-radius:8px;padding:6px 10px;border:1.5px solid #111;box-shadow:0 8px 20px rgba(0,0,0,.15);font-size:11px;font-weight:600;max-width:200px;opacity:.95;transform:translate(-50%,-50%)}
@@ -152,13 +152,40 @@ button{font-family:inherit}
 .acard .at .tt{font-size:10px;color:#999;font-weight:400}
 .acard .ab{padding:6px 8px;background:#F8F8F8;border-radius:5px}
 .acard .ab p{font-size:12px;color:#555;line-height:1.6;margin:0}
+
+/* ═══ SIDEBAR ═══ */
+.tl-layout{display:flex;gap:12px}
+.tl-main{flex:1;min-width:0}
+.tl-sidebar{width:220px;flex-shrink:0}
+@media(max-width:900px){.tl-layout{flex-direction:column}.tl-sidebar{width:100%}}
+.sidebar-card{background:#FFF;border:1px solid #E5E5E5;border-radius:10px;padding:14px;position:sticky;top:16px}
+.sidebar-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#111;margin-bottom:10px}
+.memo-add{display:flex;gap:4px;margin-bottom:10px}
+.memo-add input{flex:1;padding:6px 8px;border:1px solid #E5E5E5;border-radius:6px;font-size:11px;font-family:inherit;outline:none}
+.memo-add input:focus{border-color:#BBB}
+.memo-add button{background:#111;color:#FFF;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit}
+.memo-list{display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto}
+.memo-item{display:flex;align-items:flex-start;gap:6px;padding:6px 8px;background:#FAFAFA;border-radius:6px;font-size:11px;line-height:1.4;color:#444}
+.memo-item.checked{opacity:.5}
+.memo-item.checked .memo-text{text-decoration:line-through}
+.memo-chk{width:14px;height:14px;border-radius:3px;border:1.5px solid #CCC;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:1px;background:transparent;font-size:8px}
+.memo-chk.on{background:#111;border:none;color:#FFF}
+.memo-chk.on::after{content:'✓'}
+.memo-text{flex:1;word-break:break-word}
+.memo-del{background:none;border:none;cursor:pointer;font-size:10px;color:#CCC;padding:0;flex-shrink:0;margin-top:1px}
+.memo-del:hover{color:#999}
+.memo-empty{font-size:11px;color:#CCC;text-align:center;padding:12px 0}
+.sb-notes{margin-top:14px;padding-top:12px;border-top:1px solid #F0F0F0}
+.sb-notes h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#111;margin-bottom:8px}
+.sb-note{padding:4px 6px;background:#FFFDE7;border-radius:4px;margin-bottom:4px;border-left:2px solid #EAB308;font-size:10px;color:#666;line-height:1.4}
+.sb-note .sn-task{font-weight:600;color:#444}
 </style>
 </head>
 <body>
 <div id="app" class="container"></div>
 <script>
 const DAYS=["Seg","Ter","Qua","Qui","Sex"];
-const START_HOUR=8, LUNCH_START=12, LUNCH_END=14, PX_PER_MIN=1.8;
+const START_HOUR=8, LUNCH_START=12, LUNCH_END=14, PX_PER_MIN=0.85;
 const CC={ia:"#8B5CF6",va:"#F59E0B",pesquisa:"#06B6D4",estudo:"#A855F7",ecom:"#EAB308",social:"#F97316",reuniao:"#10B981",admin:"#9CA3AF",saude:"#22C55E",revisao:"#3B82F6"};
 const CL={ia:"Criação @amandag.ia",va:"Criação @vida.autoral",pesquisa:"Pesquisa IA",estudo:"Estudo / Curso IA",ecom:"E-commerce",social:"Redes sociais",reuniao:"Reuniões",admin:"Admin",saude:"Saúde",revisao:"Revisão semanal"};
 const DS={
@@ -204,7 +231,7 @@ const DS={
   ],
 };
 
-let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null};
+let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null,memos:[]};
 
 function getWeekKey(d){d=new Date(d);const dy=d.getDay(),df=d.getDate()-dy+(dy===0?-6:1);const m=new Date(d.setDate(df));return`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}-${String(m.getDate()).padStart(2,"0")}`}
 function weekDates(w){const[y,m,d]=w.split("-").map(Number);const mn=new Date(y,m-1,d);return DAYS.map((_,i)=>{const t=new Date(mn);t.setDate(mn.getDate()+i);return`${String(t.getDate()).padStart(2,"0")}/${String(t.getMonth()+1).padStart(2,"0")}`})}
@@ -216,9 +243,11 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 
 function dk(){return"tv3:d:"+S.week}
 function sk(){return"tv3:s:"+S.week}
-function load(){try{const d=localStorage.getItem(dk());S.data=d?JSON.parse(d):{}}catch{S.data={}}try{const s=localStorage.getItem(sk());S.sched=s?JSON.parse(s):JSON.parse(JSON.stringify(DS))}catch{S.sched=JSON.parse(JSON.stringify(DS))}}
+function mk(){return"tv3:m:"+S.week}
+function load(){try{const d=localStorage.getItem(dk());S.data=d?JSON.parse(d):{}}catch{S.data={}}try{const s=localStorage.getItem(sk());S.sched=s?JSON.parse(s):JSON.parse(JSON.stringify(DS))}catch{S.sched=JSON.parse(JSON.stringify(DS))}try{const m=localStorage.getItem(mk());S.memos=m?JSON.parse(m):[]}catch{S.memos=[]}}
 function saveD(){localStorage.setItem(dk(),JSON.stringify(S.data))}
 function saveS(){localStorage.setItem(sk(),JSON.stringify(S.sched))}
+function saveM(){localStorage.setItem(mk(),JSON.stringify(S.memos))}
 
 function allT(){return Object.values(S.sched).flat()}
 function dStats(day){const t=S.sched[day],dn=t.filter(x=>S.data[x.id]?.done).length;return{done:dn,total:t.length,pct:t.length?Math.round(dn/t.length*100):0}}
@@ -396,54 +425,79 @@ function render(){
 
 function renderTimeline(wd,td){
   const th=totalHeight();
-  // Hour ticks
   const hours=[];
   for(let hr=START_HOUR;hr<=20;hr++){
     if(hr>=LUNCH_START&&hr<LUNCH_END)continue;
     hours.push({hr,y:minToY(hr*60)});
   }
-  let h=`<div class="timeline-wrap"><div class="time-gutter" style="height:${th+36}px">`;
-  hours.forEach(({hr,y})=>{h+=`<div class="tick" style="top:${y+36}px">${hr}h</div>`;});
-  h+=`</div>`;
+
+  // Sidebar: memos + task notes
+  let sb=`<div class="tl-sidebar"><div class="sidebar-card">
+    <h3>📌 lembretes</h3>
+    <div class="memo-add"><input type="text" id="memo-in" placeholder="adicionar lembrete..." onkeydown="if(event.key==='Enter')addMemo()"><button onclick="addMemo()">+</button></div>
+    <div class="memo-list">`;
+  if(!S.memos.length) sb+=`<div class="memo-empty">nenhum lembrete</div>`;
+  else S.memos.forEach((m,i)=>{
+    sb+=`<div class="memo-item ${m.done?"checked":""}">
+      <div class="memo-chk ${m.done?"on":""}" onclick="tgMemo(${i})"></div>
+      <span class="memo-text">${esc(m.text)}</span>
+      <button class="memo-del" onclick="delMemo(${i})">✕</button>
+    </div>`;
+  });
+  sb+=`</div>`;
+
+  // Task notes from this week
+  const allNotes=allT().filter(t=>S.data[t.id]?.note);
+  if(allNotes.length){
+    sb+=`<div class="sb-notes"><h3>📝 notas das tarefas</h3>`;
+    allNotes.forEach(t=>{
+      sb+=`<div class="sb-note"><span class="sn-task">${t.icon} ${t.task}</span><br>${esc(S.data[t.id].note)}</div>`;
+    });
+    sb+=`</div>`;
+  }
+  sb+=`</div></div>`;
+
+  // Timeline
+  let tl=`<div class="tl-main"><div class="timeline-wrap"><div class="time-gutter" style="height:${th+36}px">`;
+  hours.forEach(({hr,y})=>{tl+=`<div class="tick" style="top:${y+36}px">${hr}h</div>`;});
+  tl+=`</div>`;
 
   DAYS.forEach((day,di)=>{
     const isToday=wd[di]===td;
     const pos=computePositions(day);
-    h+=`<div class="day-col" data-day="${day}">
+    tl+=`<div class="day-col" data-day="${day}">
       <div class="day-col-head ${isToday?"today":""}"><div class="name">${day}</div><div class="date">${wd[di]}</div></div>
       <div class="day-col-body" style="height:${th}px;position:relative">`;
 
-    // Hour lines
-    hours.forEach(({hr,y})=>{h+=`<div class="hour-line" style="top:${y}px"></div>`;});
-    // Lunch zone
+    hours.forEach(({hr,y})=>{tl+=`<div class="hour-line" style="top:${y}px"></div>`;});
     const ly=minToY(LUNCH_START*60);
-    h+=`<div class="lunch-zone" style="top:${ly}px;height:4px"></div>`;
+    tl+=`<div class="lunch-zone" style="top:${ly}px;height:4px"></div>`;
 
-    // Blocks
     pos.forEach((p,i)=>{
       const t=p.task,e=S.data[t.id]||{done:false};
       const col=CC[t.cat]||"#999";
       const y=minToY(p.startMin);
       const height=p.mins*PX_PER_MIN;
-      const showFull=height>=50;
+      const showTime=height>=28;
       const endMin=p.startMin+p.mins;
 
-      h+=`<div class="tblock ${e.done?"done":""}" data-tid="${t.id}" style="top:${y}px;height:${height}px;background:${col}18;border-left:3px solid ${col}"
+      tl+=`<div class="tblock ${e.done?"done":""}" data-tid="${t.id}" style="top:${y}px;height:${height}px;background:${col}18;border-left:3px solid ${col}"
         onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
         <div class="tb-top">
           <div class="tb-check ${e.done?"checked":""}" onclick="event.stopPropagation();tgD('${t.id}')"></div>
           <span class="tb-icon">${t.icon}</span>
           <span class="tb-name">${t.task}</span>
         </div>`;
-      if(showFull) h+=`<div class="tb-time">${timeLabel(p.startMin)}–${timeLabel(endMin)} · ${fmtM(p.mins)}</div>`;
-      h+=`<div class="tb-resize" onmousedown="startR(event,'${day}',${i})" ontouchstart="startR(event,'${day}',${i})"></div>`;
-      h+=`</div>`;
+      if(showTime) tl+=`<div class="tb-time">${timeLabel(p.startMin)}–${timeLabel(endMin)} · ${fmtM(p.mins)}</div>`;
+      tl+=`<div class="tb-resize" onmousedown="startR(event,'${day}',${i})" ontouchstart="startR(event,'${day}',${i})"></div>`;
+      tl+=`</div>`;
     });
 
-    h+=`</div></div>`;
+    tl+=`</div></div>`;
   });
-  h+=`</div>`;
-  return h;
+  tl+=`</div></div>`;
+
+  return `<div class="tl-layout">${tl}${sb}</div>`;
 }
 
 function renderDay(wd,td){
@@ -528,7 +582,10 @@ window.tgN=(id)=>{S.enote=S.enote===id?null:id;S.etime=null;render();if(S.enote)
 window.tgT=(id)=>{S.etime=S.etime===id?null:id;S.enote=null;render();if(S.etime)setTimeout(()=>{const el=document.getElementById("ti");if(el)el.focus()},50)};
 window.sN=(id)=>{const el=document.getElementById("ni");if(!el)return;if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};S.data[id].note=el.value;S.enote=null;saveD();render()};
 window.sT=(id)=>{const el=document.getElementById("ti");if(!el)return;const v=parseInt(el.value);if(isNaN(v)||v<0)return;if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};S.data[id].realMins=v;S.etime=null;saveD();render()};
-window.resetW=()=>{if(!confirm("Resetar tudo desta semana?"))return;S.data={};S.sched=JSON.parse(JSON.stringify(DS));localStorage.removeItem(dk());localStorage.removeItem(sk());render()};
+window.resetW=()=>{if(!confirm("Resetar tudo desta semana?"))return;S.data={};S.sched=JSON.parse(JSON.stringify(DS));S.memos=[];localStorage.removeItem(dk());localStorage.removeItem(sk());localStorage.removeItem(mk());render()};
+window.addMemo=()=>{const el=document.getElementById("memo-in");if(!el||!el.value.trim())return;S.memos.push({text:el.value.trim(),done:false});saveM();render();setTimeout(()=>{const i=document.getElementById("memo-in");if(i)i.focus()},50)};
+window.tgMemo=(i)=>{S.memos[i].done=!S.memos[i].done;saveM();render()};
+window.delMemo=(i)=>{S.memos.splice(i,1);saveM();render()};
 window.onMD=(e,d,i)=>{if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;startDragBlock(e,d,i)};
 window.onTS=(e,d,i)=>{if(e.target.closest(".tb-check")||e.target.closest(".tb-resize"))return;lpData={e,d,i};longPress=setTimeout(()=>{startDragBlock(lpData.e,lpData.d,lpData.i);if(navigator.vibrate)navigator.vibrate(30)},250)};
 window.startR=(e,d,i)=>{startResize(e,d,i)};
