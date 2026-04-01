@@ -251,6 +251,12 @@ button{font-family:inherit}
 .gap-slot:hover{background:#F0F0F0;border-color:#BBB}
 .gap-slot .gap-label{font-size:9px;color:#BBB;font-weight:500}
 .gap-slot:hover .gap-label{color:#888}
+
+/* Now line */
+.now-line{position:absolute;left:0;right:0;z-index:3;pointer-events:none;height:0}
+.now-line::before{content:'';position:absolute;left:-1px;right:0;top:0;height:2px;background:#EF4444}
+.now-line::after{content:'';position:absolute;left:-5px;top:-3px;width:8px;height:8px;background:#EF4444;border-radius:50%}
+.now-gutter{position:absolute;left:0;width:100%;font-size:8px;color:#EF4444;text-align:right;padding-right:4px;font-weight:700;font-variant-numeric:tabular-nums}
 /* Add event modal */
 .add-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:101;display:flex;align-items:center;justify-content:center;padding:16px}
 .add-panel{background:#FFF;border-radius:14px;padding:20px;max-width:360px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.15);max-height:80vh;overflow-y:auto}
@@ -273,8 +279,8 @@ button{font-family:inherit}
 <script>
 const DAYS=["Seg","Ter","Qua","Qui","Sex"];
 const START_HOUR=8, LUNCH_START=12, LUNCH_END=14, PX_PER_MIN=0.85;
-const CC={ia:"#8B5CF6",va:"#F59E0B",pesquisa:"#06B6D4",estudo:"#A855F7",ecom:"#EAB308",social:"#F97316",reuniao:"#10B981",admin:"#9CA3AF",saude:"#22C55E",revisao:"#3B82F6"};
-const CL={ia:"Criação @amandag.ia",va:"Criação @vida.autoral",pesquisa:"Pesquisa IA",estudo:"Estudo / Curso IA",ecom:"E-commerce",social:"Redes sociais",reuniao:"Reuniões",admin:"Admin",saude:"Saúde",revisao:"Revisão semanal"};
+const CC={ia:"#8B5CF6",va:"#F59E0B",pesquisa:"#06B6D4",estudo:"#A855F7",ecom:"#EAB308",social:"#F97316",reuniao:"#10B981",admin:"#9CA3AF",saude:"#22C55E",revisao:"#3B82F6",video:"#EC4899"};
+const CL={ia:"Criação @amandag.ia",va:"Criação @vida.autoral",pesquisa:"Pesquisa IA",estudo:"Estudo / Curso IA",ecom:"E-commerce",social:"Redes sociais",reuniao:"Reuniões",admin:"Admin",saude:"Saúde",revisao:"Revisão semanal",video:"Produção de vídeos IA"};
 const DS={
   Seg:[
     {id:"seg-1",task:"Rotina + Planejamento",icon:"☕",cat:"admin",desc:"Revisar prioridades, checar métricas, definir top 3.",auto:"n8n: relatório de métricas Instagram enviado segunda 7h.",mins:60},
@@ -286,29 +292,28 @@ const DS={
   Ter:[
     {id:"ter-1",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Ferramentas novas, updates, insights.",auto:"Apify: scraping Product Hunt + newsletters.",mins:60},
     {id:"ter-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, design e finalizar post #2.",auto:"Claude Cowork: análise de concorrentes.",mins:120},
-    {id:"ter-3",task:"Criação / Revisão",icon:"✍️",cat:"ia",desc:"Finalizar post, revisar equipe VA.",mins:60},
+    {id:"ter-3",task:"Produção de vídeos IA",icon:"🎬",cat:"video",desc:"Gravar, editar e finalizar vídeos para @amandag.ia (reels, tutoriais, demonstrações).",mins:60},
     {id:"ter-4",task:"Semana A: Estoque",icon:"📦",cat:"ecom",desc:"Embalar pedidos no estoque (a cada 2 semanas). Na semana alternada: Estudo IA.",mins:120},
-    {id:"ter-5",task:"Reunião VA",icon:"🤝",cat:"reuniao",desc:"Funil Serena, métricas, próximos passos.",auto:"n8n: dashboard vendas Serena.",mins:60},
-    {id:"ter-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Referências de grade, testar ferramentas.",mins:60},
+    {id:"ter-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Referências de grade, testar ferramentas, estruturar módulos.",mins:120},
   ],
   Qua:[
     {id:"qua-1",task:"Rotina + Planejamento",icon:"☕",cat:"admin",desc:"Ajustar prioridades meio de semana.",mins:60},
-    {id:"qua-2",task:"Criação @vida.autoral",icon:"✍️",cat:"va",desc:"Roteirizar e finalizar post #1 VA.",auto:"Claude Cowork: skill Vida Autoral Brand.",mins:120},
+    {id:"qua-2",task:"Produção de vídeos IA",icon:"🎬",cat:"video",desc:"Gravar e editar conteúdo em vídeo: reels, tutoriais, demos de ferramentas IA.",mins:120},
     {id:"qua-3",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
     {id:"qua-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Pedidos, SAC, catálogo.",mins:90},
     {id:"qua-5",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Continuar estruturação de módulos, gravar aulas-piloto.",mins:120},
   ],
   Qui:[
     {id:"qui-1",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Testar ferramentas, documentar.",auto:"Apify + Claude: ganchos virais.",mins:60},
-    {id:"qui-2",task:"Criação @vida.autoral",icon:"✍️",cat:"va",desc:"Roteirizar e finalizar post #2 VA.",mins:120},
-    {id:"qui-3",task:"Criação / Revisão",icon:"✍️",cat:"va",desc:"Finalizar VA, revisar equipe.",mins:60},
+    {id:"qui-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, design e finalizar post #3.",auto:"Claude Cowork: batch roteiros + hooks.",mins:120},
+    {id:"qui-3",task:"Produção de vídeos IA",icon:"🎬",cat:"video",desc:"Gravar e editar vídeos, finalizar pendências de vídeo da semana.",mins:60},
     {id:"qui-4",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Pedidos, relatório pra reunião.",auto:"n8n: relatório Shopify pré-reunião.",mins:90},
     {id:"qui-5",task:"Reunião Ecommerce",icon:"🤝",cat:"reuniao",desc:"Reunião fixa 16h–17h: métricas, problemas, decisões.",mins:60},
     {id:"qui-6",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Revisão de progresso, próximos módulos.",mins:60},
   ],
   Sex:[
     {id:"sex-1",task:"Rotina + Planejamento",icon:"☕",cat:"admin",desc:"Revisar entregas, pendências.",mins:60},
-    {id:"sex-2",task:"Batch: post #3 IA+VA",icon:"✍️",cat:"ia",desc:"Post #3 de cada marca.",auto:"Claude Cowork: batch roteiros + hooks.",mins:120},
+    {id:"sex-2",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Finalizar conteúdos pendentes da semana @amandag.ia.",mins:120},
     {id:"sex-3",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
     {id:"sex-4",task:"Revisão semanal",icon:"📊",cat:"revisao",desc:"Métricas, comparar semana anterior.",auto:"n8n: relatório comparativo completo.",mins:60},
     {id:"sex-5",task:"Plan. próx. semana",icon:"📊",cat:"revisao",desc:"Pautas, temas, briefings.",mins:60},
@@ -631,6 +636,14 @@ function renderTimeline(wd,td){
   // Timeline
   let tl=`<div class="tl-main"><div class="timeline-wrap"><div class="time-gutter" style="height:${th+36}px">`;
   hours.forEach(({hr,y})=>{tl+=`<div class="tick" style="top:${y+36}px">${hr}h</div>`;});
+  // Now indicator in gutter
+  const nowD=new Date();
+  const nowTotalMin=nowD.getHours()*60+nowD.getMinutes();
+  if(nowTotalMin>=START_HOUR*60){
+    const nowGY=minToY(nowTotalMin)+36;
+    const nowH=nowD.getHours();const nowM=nowD.getMinutes();
+    tl+=`<div class="now-gutter" style="top:${nowGY-5}px">${nowH}:${String(nowM).padStart(2,"0")}</div>`;
+  }
   tl+=`</div>`;
 
   DAYS.forEach((day,di)=>{
@@ -641,6 +654,16 @@ function renderTimeline(wd,td){
       <div class="day-col-body" style="height:${th}px;position:relative">`;
 
     hours.forEach(({hr,y})=>{tl+=`<div class="hour-line" style="top:${y}px"></div>`;});
+
+    // Now line (only on today's column)
+    if(isToday){
+      const now=new Date();
+      const nowMin=now.getHours()*60+now.getMinutes();
+      if(nowMin>=START_HOUR*60){
+        const nowY=minToY(nowMin);
+        tl+=`<div class="now-line" style="top:${nowY}px"></div>`;
+      }
+    }
 
     // Lunch block (half height for compactness)
     const ly=minToY(LUNCH_START*60);
@@ -1073,6 +1096,9 @@ window.moveTask=(fromDay,idx,toDay)=>{
 };
 
 load();render();
+
+// Update now-line every 60 seconds
+setInterval(()=>{if(S.view==="semana")render()},60000);
 </script>
 </body>
 </html>
