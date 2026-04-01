@@ -1,16 +1,635 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tracker Semanal</title>
-    <style>
-      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #FAFAFA; -webkit-font-smoothing: antialiased; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tracker Semanal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #FAFAFA; color: #111; -webkit-font-smoothing: antialiased; }
+  button { font-family: inherit; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+  .container.wide { max-width: 1100px; }
+
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { font-size: 11px; color: #999; margin-top: 2px; letter-spacing: 0.3px; }
+
+  .week-nav { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 16px; }
+  .week-nav button { background: none; border: 1px solid #E5E5E5; border-radius: 6px; cursor: pointer; font-size: 16px; color: #999; padding: 4px 10px; }
+  .week-nav span { font-size: 13px; font-weight: 600; }
+
+  .progress { margin-bottom: 20px; }
+  .progress-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .progress-top .label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+  .progress-top .pct { font-size: 11px; font-weight: 700; }
+  .progress-bar { background: #E5E5E5; border-radius: 2px; height: 3px; }
+  .progress-fill { height: 100%; background: #111; border-radius: 2px; transition: width 0.4s; }
+
+  .tabs { display: flex; border-bottom: 1px solid #E5E5E5; margin-bottom: 24px; overflow-x: auto; gap: 0; }
+  .tabs button { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; font-size: 12px; font-weight: 400; color: #999; white-space: nowrap; }
+  .tabs button.active { border-bottom-color: #111; font-weight: 600; color: #111; }
+
+  .day-pills { display: flex; gap: 4px; margin-bottom: 20px; }
+  .day-pill { flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid #E5E5E5; background: transparent; cursor: pointer; text-align: center; }
+  .day-pill.today { border: 1.5px solid #BBB; }
+  .day-pill.active { border: 1.5px solid #111; background: #111; }
+  .day-pill .name { font-size: 12px; font-weight: 600; color: #111; }
+  .day-pill.active .name { color: #FFF; }
+  .day-pill .stat { font-size: 10px; color: #999; }
+  .day-pill.active .stat { color: rgba(255,255,255,0.5); }
+
+  .day-label { font-size: 11px; font-weight: 600; color: #999; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+
+  .task-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+
+  .task-card {
+    background: #FFF; border-radius: 10px; padding: 12px 14px;
+    border: 1px solid #E5E5E5; border-left: 3px solid #999;
+    transition: opacity 0.15s, box-shadow 0.15s;
+    touch-action: none; cursor: grab; user-select: none;
+    position: relative;
+  }
+  .task-card.done { opacity: 0.5; }
+  .task-card.dragging { opacity: 0.3; }
+  .task-card.drop-above { box-shadow: 0 -2px 0 0 #111; }
+  .task-card.drop-below { box-shadow: 0 2px 0 0 #111; }
+  .task-card.compact { padding: 8px 10px; }
+
+  .task-top { display: flex; align-items: flex-start; gap: 10px; }
+  .checkbox {
+    width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #CCC;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; margin-top: 1px; background: transparent;
+  }
+  .checkbox.checked { background: #111; border: none; }
+  .checkbox.checked::after { content: '✓'; color: #FFF; font-size: 10px; }
+
+  .task-info { flex: 1; min-width: 0; }
+  .task-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .task-title .icon { font-size: 14px; }
+  .task-title .name { font-size: 13px; font-weight: 600; }
+  .task-card.compact .task-title .icon { font-size: 13px; }
+  .task-card.compact .task-title .name { font-size: 12px; }
+  .task-card.done .task-title .name { text-decoration: line-through; }
+
+  .task-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .task-meta .time { font-size: 11px; color: #999; }
+  .task-meta .dur { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 3px; }
+  .task-meta .real-time { font-size: 10px; font-weight: 600; }
+  .task-meta .real-time.over { color: #EF4444; }
+  .task-meta .real-time.under { color: #22C55E; }
+
+  .task-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .task-actions button { background: none; border: none; padding: 0; cursor: pointer; font-size: 10px; color: #BBB; font-family: inherit; }
+  .task-actions button.has-data { color: #666; }
+
+  .task-detail { margin-top: 8px; }
+  .task-detail p { font-size: 11px; color: #666; line-height: 1.5; margin: 0 0 6px; }
+  .auto-box { padding: 6px 8px; background: #F8F8F8; border-radius: 6px; border-left: 2px solid #DDD; }
+  .auto-box .label { font-size: 9px; font-weight: 700; color: #BBB; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .auto-box p { font-size: 11px; color: #666; line-height: 1.5; margin: 0; }
+
+  .note-display { margin-top: 6px; padding: 4px 8px; background: #FAFAFA; border-radius: 5px; font-size: 11px; color: #777; border-left: 2px solid #E0E0E0; }
+
+  .inline-edit { margin-top: 6px; display: flex; gap: 4px; align-items: center; }
+  .inline-edit input { flex: 1; padding: 6px 8px; border-radius: 5px; border: 1px solid #DDD; font-size: 11px; font-family: inherit; outline: none; }
+  .inline-edit input[type="number"] { width: 70px; flex: none; }
+  .inline-edit .unit { font-size: 10px; color: #999; }
+  .inline-edit button { background: #111; color: #FFF; border: none; border-radius: 5px; padding: 6px 12px; cursor: pointer; font-size: 11px; font-weight: 600; }
+
+  .drag-handle { position: absolute; top: 0; right: 0; bottom: 0; width: 32px; display: flex; align-items: center; justify-content: center; color: #CCC; font-size: 14px; cursor: grab; border-radius: 0 10px 10px 0; }
+  .drag-handle:hover { color: #999; }
+
+  /* Ghost element */
+  .ghost {
+    position: fixed; z-index: 9999; pointer-events: none;
+    background: #FFF; border-radius: 10px; padding: 8px 12px;
+    border: 1.5px solid #111; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    font-size: 12px; font-weight: 600; max-width: 280px;
+    opacity: 0.95; transform: translate(-50%, -50%);
+  }
+
+  /* Weekly grid */
+  .week-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; overflow-x: auto; }
+  .week-col { min-width: 150px; }
+  .week-col-header { text-align: center; padding: 8px 0; margin-bottom: 8px; border-bottom: 1px solid #E5E5E5; }
+  .week-col-header.today { border-bottom: 2px solid #111; }
+  .week-col-header .name { font-size: 12px; font-weight: 700; }
+  .week-col-header .date { font-size: 10px; color: #999; }
+  .week-col-header .stat { font-size: 10px; font-weight: 600; color: #999; margin-top: 2px; }
+  .week-col-header .stat.done { color: #22C55E; }
+  .week-col-body { display: flex; flex-direction: column; gap: 6px; min-height: 100px; padding-bottom: 30px; }
+  .drop-zone { min-height: 30px; border-radius: 6px; border: 1px dashed transparent; transition: border-color 0.15s; }
+  .drop-zone.active { border-color: #111; }
+
+  /* Summary */
+  .card { background: #FFF; border-radius: 10px; padding: 18px; border: 1px solid #E5E5E5; margin-bottom: 14px; }
+  .card h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .cat-row { margin-bottom: 12px; }
+  .cat-row .top { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .cat-row .top .name { font-size: 12px; font-weight: 500; }
+  .cat-row .top .nums { font-size: 11px; color: #999; }
+  .cat-bar { background: #F0F0F0; border-radius: 2px; height: 3px; }
+  .cat-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  .day-bars { display: flex; gap: 8px; align-items: flex-end; }
+  .day-bar { flex: 1; text-align: center; }
+  .day-bar .col-wrap { height: 70px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; margin-bottom: 4px; }
+  .day-bar .col { width: 60%; border-radius: 3px; transition: height 0.3s; }
+  .day-bar .lbl { font-size: 11px; font-weight: 600; }
+  .day-bar .val { font-size: 10px; color: #999; }
+
+  .time-compare { display: flex; gap: 16px; font-size: 13px; }
+  .time-compare .item span { color: #999; font-size: 11px; display: block; }
+  .time-compare .item div { font-weight: 700; }
+
+  .notes-list .note-item { padding: 6px 8px; background: #FAFAFA; border-radius: 5px; margin-bottom: 6px; border-left: 2px solid #999; }
+  .notes-list .note-item .title { font-size: 11px; font-weight: 600; }
+  .notes-list .note-item .text { font-size: 11px; color: #777; margin-top: 1px; }
+
+  .reset-btn { display: block; margin: 20px auto; background: none; border: 1px solid #E5E5E5; border-radius: 6px; padding: 6px 16px; cursor: pointer; font-size: 11px; color: #999; }
+
+  .auto-section p.intro { font-size: 12px; color: #999; margin-bottom: 18px; line-height: 1.6; }
+  .auto-card { background: #FFF; border: 1px solid #E5E5E5; border-radius: 10px; padding: 12px 14px; margin-bottom: 6px; border-left: 3px solid #999; }
+  .auto-card .title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .auto-card .title .time-tag { font-size: 10px; color: #999; font-weight: 400; }
+  .auto-card .body { padding: 6px 8px; background: #F8F8F8; border-radius: 5px; }
+  .auto-card .body p { font-size: 12px; color: #555; line-height: 1.6; margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="container" id="app"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════
+const DAYS = ["Seg","Ter","Qua","Qui","Sex"];
+const DEFAULT_SCHEDULE = {
+  Seg:[
+    {id:"seg-1",time:"8h–9h",task:"Rotina + Planejamento",icon:"☕",cat:"admin",desc:"Revisar prioridades da semana, checar métricas, definir top 3 do dia.",auto:"n8n: relatório automático de métricas Instagram enviado por email toda segunda 7h.",mins:60},
+    {id:"seg-2",time:"9h–11h",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, criar design e finalizar post #1 para @amandag.ia.",auto:"Claude Cowork: Roteirista Viral + Analista de Instagram geram 3 opções de hook.",mins:120},
+    {id:"seg-3",time:"11h–12h",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
+    {id:"seg-4",time:"14h–15h30",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Processar pedidos, SAC, estoque e envios.",auto:"n8n: Shopify → Google Sheets + alertas de estoque baixo.",mins:90},
+    {id:"seg-5",time:"15h30–16h30",task:"Engajamento redes",icon:"📱",cat:"social",desc:"Responder DMs, comentários, interagir com perfis estratégicos.",auto:"n8n: notificação consolidada de DMs pendentes.",mins:60},
+    {id:"seg-6",time:"17h–18h",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Estruturar módulos do curso para nov/26.",mins:60},
+  ],
+  Ter:[
+    {id:"ter-1",time:"8h–9h",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Explorar ferramentas novas, testar updates, anotar insights.",auto:"Apify: scraping de Product Hunt e newsletters IA.",mins:60},
+    {id:"ter-2",time:"9h–11h",task:"Criação @amandag.ia",icon:"✍️",cat:"ia",desc:"Roteirizar, criar design e finalizar post #2 para @amandag.ia.",auto:"Claude Cowork: Analista de Competidores roda análise semanal.",mins:120},
+    {id:"ter-3",time:"11h–12h",task:"Criação (cont.) / Revisão",icon:"✍️",cat:"ia",desc:"Finalizar post, revisar posts da equipe VA.",mins:60},
+    {id:"ter-4",time:"14h–15h",task:"Agendar posts da semana",icon:"📱",cat:"social",desc:"Programar posts, verificar horários e legendas.",auto:"n8n: post automático nos melhores horários via API.",mins:60},
+    {id:"ter-5",time:"15h–16h",task:"Reunião Vida Autoral",icon:"🤝",cat:"reuniao",desc:"Alinhamento semanal: funil Serena, métricas, próximos passos.",auto:"n8n: dashboard de vendas Serena enviado antes da reunião.",mins:60},
+    {id:"ter-6",time:"17h–18h",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Pesquisar referências de grade, testar ferramentas.",mins:60},
+  ],
+  Qua:[
+    {id:"qua-1",time:"8h–9h",task:"Rotina + Planejamento",icon:"☕",cat:"admin",desc:"Revisar meio de semana, ajustar prioridades.",mins:60},
+    {id:"qua-2",time:"9h–11h",task:"Criação @vida.autoral",icon:"✍️",cat:"va",desc:"Roteirizar e finalizar post #1 para @vida.autoral.",auto:"Claude Cowork: skill Vida Autoral Brand para identidade visual.",mins:120},
+    {id:"qua-3",time:"11h–12h",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
+    {id:"qua-4",time:"14h–15h30",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Processar pedidos, SAC, catálogo.",mins:90},
+    {id:"qua-5",time:"15h30–16h30",task:"Engajamento redes",icon:"📱",cat:"social",desc:"Responder DMs, comentários, interagir.",mins:60},
+    {id:"qua-6",time:"17h–18h",task:"Admin",icon:"📧",cat:"admin",desc:"Emails, tarefas pendentes, organização.",auto:"n8n: resumo de emails não respondidos às 16h45.",mins:60},
+  ],
+  Qui:[
+    {id:"qui-1",time:"8h–9h",task:"Pesquisa IA",icon:"🔬",cat:"pesquisa",desc:"Testar ferramentas, documentar aprendizados.",auto:"Apify + Claude: mineração de ganchos virais.",mins:60},
+    {id:"qui-2",time:"9h–11h",task:"Criação @vida.autoral",icon:"✍️",cat:"va",desc:"Roteirizar e finalizar post #2 para @vida.autoral.",mins:120},
+    {id:"qui-3",time:"11h–12h",task:"Criação (cont.) / Revisão",icon:"✍️",cat:"va",desc:"Finalizar post VA, revisar materiais da equipe.",mins:60},
+    {id:"qui-4",time:"14h–15h30",task:"E-commerce",icon:"📦",cat:"ecom",desc:"Processar pedidos, preparar relatório.",auto:"n8n: relatório Shopify gerado antes da reunião de 16h.",mins:90},
+    {id:"qui-5",time:"16h–17h",task:"Reunião E-commerce",icon:"🤝",cat:"reuniao",desc:"Reunião fixa: métricas, problemas, decisões.",mins:60},
+    {id:"qui-6",time:"17h–18h",task:"Admin",icon:"📧",cat:"admin",desc:"Emails, pendências, pautas de amanhã.",mins:60},
+  ],
+  Sex:[
+    {id:"sex-1",time:"8h–9h",task:"Rotina + Planejamento",icon:"☕",cat:"admin",desc:"Revisar entregas, identificar pendências.",mins:60},
+    {id:"sex-2",time:"9h–11h",task:"Batch: post #3 IA + VA",icon:"✍️",cat:"ia",desc:"Finalizar post #3 de cada marca.",auto:"Claude Cowork: batch de 2 roteiros com hooks minerados.",mins:120},
+    {id:"sex-3",time:"11h–12h",task:"Academia",icon:"🏋️",cat:"saude",desc:"Treino presencial — bloco protegido.",mins:60},
+    {id:"sex-4",time:"14h–15h",task:"Revisão semanal",icon:"📊",cat:"revisao",desc:"Analisar métricas, comparar com semana anterior.",auto:"n8n: relatório comparativo IA + VA + Serena + ecommerce.",mins:60},
+    {id:"sex-5",time:"15h–16h",task:"Planejamento próx. semana",icon:"📊",cat:"revisao",desc:"Definir pautas, alocar temas nos dias.",mins:60},
+    {id:"sex-6",time:"16h–17h",task:"Estudo / Curso IA",icon:"🧠",cat:"estudo",desc:"Revisar progresso do curso, próximos módulos.",mins:60},
+  ],
+};
+
+const CAT_COLORS = {ia:"#8B5CF6",va:"#F59E0B",pesquisa:"#06B6D4",estudo:"#A855F7",ecom:"#EAB308",social:"#F97316",reuniao:"#10B981",admin:"#9CA3AF",saude:"#22C55E",revisao:"#3B82F6"};
+const CAT_LABELS = {ia:"Criação @amandag.ia",va:"Criação @vida.autoral",pesquisa:"Pesquisa IA",estudo:"Estudo / Curso IA",ecom:"E-commerce",social:"Redes sociais",reuniao:"Reuniões",admin:"Admin",saude:"Saúde",revisao:"Revisão semanal"};
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let state = {
+  currentWeek: getWeekKey(new Date()),
+  data: {},
+  schedule: null,
+  view: "dia",
+  activeDay: null,
+  expandedTask: null,
+  editingNote: null,
+  editingTime: null,
+};
+
+// ══════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════
+function getWeekKey(date) {
+  const d = new Date(date); const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const m = new Date(d.setDate(diff));
+  return `${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}-${String(m.getDate()).padStart(2,"0")}`;
+}
+function getWeekDates(wk) {
+  const [y,m,d] = wk.split("-").map(Number); const mon = new Date(y,m-1,d);
+  return DAYS.map((_,i) => { const dt = new Date(mon); dt.setDate(mon.getDate()+i); return `${String(dt.getDate()).padStart(2,"0")}/${String(dt.getMonth()+1).padStart(2,"0")}`; });
+}
+function shiftWeek(wk, delta) { const [y,m,d] = wk.split("-").map(Number); return getWeekKey(new Date(y,m-1,d+delta*7)); }
+function formatWeekLabel(wk) {
+  const [y,m,d] = wk.split("-").map(Number); const mon = new Date(y,m-1,d); const fri = new Date(y,m-1,d+4);
+  const ms=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  return `${mon.getDate()} ${ms[mon.getMonth()]} — ${fri.getDate()} ${ms[fri.getMonth()]} ${fri.getFullYear()}`;
+}
+function fmtMins(m) { const h=Math.floor(m/60),mm=m%60; return h>0?(mm>0?`${h}h${mm}`:`${h}h`):`${mm}min`; }
+function todayStr() { const t=new Date(); return `${String(t.getDate()).padStart(2,"0")}/${String(t.getMonth()+1).padStart(2,"0")}`; }
+
+function dataKey() { return `tracker-v3:data:${state.currentWeek}`; }
+function schedKey() { return `tracker-v3:sched:${state.currentWeek}`; }
+
+function loadWeek() {
+  try { const d = localStorage.getItem(dataKey()); state.data = d ? JSON.parse(d) : {}; } catch { state.data = {}; }
+  try { const s = localStorage.getItem(schedKey()); state.schedule = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)); } catch { state.schedule = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)); }
+}
+function saveData() { localStorage.setItem(dataKey(), JSON.stringify(state.data)); }
+function saveSched() { localStorage.setItem(schedKey(), JSON.stringify(state.schedule)); }
+
+function allTasks() { return Object.values(state.schedule).flat(); }
+function dayStats(day) { const t=state.schedule[day],done=t.filter(x=>state.data[x.id]?.done).length; return {done,total:t.length,pct:t.length?Math.round(done/t.length*100):0}; }
+function catStats() {
+  const s={}; allTasks().forEach(t=>{
+    if(!s[t.cat]) s[t.cat]={done:0,total:0,planned:0,real:0};
+    s[t.cat].total++; s[t.cat].planned+=t.mins||0;
+    if(state.data[t.id]?.done){s[t.cat].done++;s[t.cat].real+=state.data[t.id]?.realMins??t.mins??0;}
+  }); return s;
+}
+
+// ══════════════════════════════════════════════════════════
+// DRAG & DROP (touch + mouse)
+// ══════════════════════════════════════════════════════════
+let dragState = null; // { day, idx, id, ghost, startY, startX }
+let dropIndicator = null; // { day, idx }
+
+function getPos(e) { return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
+
+function startDrag(e, day, idx) {
+  const task = state.schedule[day][idx];
+  const pos = getPos(e);
+
+  const ghost = document.createElement('div');
+  ghost.className = 'ghost';
+  ghost.textContent = `${task.icon} ${task.task}`;
+  ghost.style.left = pos.x + 'px';
+  ghost.style.top = pos.y + 'px';
+  document.body.appendChild(ghost);
+
+  dragState = { day, idx, id: task.id, ghost, startX: pos.x, startY: pos.y };
+
+  const card = document.querySelector(`[data-task-id="${task.id}"]`);
+  if (card) card.classList.add('dragging');
+
+  document.body.style.overflow = 'hidden';
+  if (e.cancelable) e.preventDefault();
+}
+
+function moveDrag(e) {
+  if (!dragState) return;
+  if (e.cancelable) e.preventDefault();
+  const pos = getPos(e);
+  dragState.ghost.style.left = pos.x + 'px';
+  dragState.ghost.style.top = pos.y + 'px';
+
+  // Auto-scroll
+  if (pos.y < 60) window.scrollBy(0, -6);
+  else if (pos.y > window.innerHeight - 60) window.scrollBy(0, 6);
+
+  // Find drop target
+  document.querySelectorAll('.task-card.drop-above,.task-card.drop-below,.drop-zone.active').forEach(el => {
+    el.classList.remove('drop-above','drop-below','active');
+  });
+  dropIndicator = null;
+
+  const allCards = document.querySelectorAll('.task-card[data-day]');
+  for (const card of allCards) {
+    const rect = card.getBoundingClientRect();
+    if (pos.x >= rect.left && pos.x <= rect.right && pos.y >= rect.top && pos.y <= rect.bottom) {
+      const midY = rect.top + rect.height / 2;
+      const day = card.dataset.day;
+      const idx = parseInt(card.dataset.idx);
+      if (pos.y < midY) {
+        card.classList.add('drop-above');
+        dropIndicator = { day, idx };
+      } else {
+        card.classList.add('drop-below');
+        dropIndicator = { day, idx: idx + 1 };
+      }
+      return;
+    }
+  }
+
+  // Check empty drop zones
+  const zones = document.querySelectorAll('.drop-zone[data-day]');
+  for (const zone of zones) {
+    const rect = zone.getBoundingClientRect();
+    if (pos.x >= rect.left && pos.x <= rect.right && pos.y >= rect.top && pos.y <= rect.bottom) {
+      zone.classList.add('active');
+      dropIndicator = { day: zone.dataset.day, idx: parseInt(zone.dataset.idx) };
+      return;
+    }
+  }
+}
+
+function endDrag() {
+  if (!dragState) return;
+  document.querySelectorAll('.task-card.drop-above,.task-card.drop-below,.task-card.dragging,.drop-zone.active').forEach(el => {
+    el.classList.remove('drop-above','drop-below','dragging','active');
+  });
+
+  if (dropIndicator) {
+    const ns = JSON.parse(JSON.stringify(state.schedule));
+    const [item] = ns[dragState.day].splice(dragState.idx, 1);
+    let ti = dropIndicator.idx;
+    if (dragState.day === dropIndicator.day && ti > dragState.idx) ti--;
+    ns[dropIndicator.day].splice(ti, 0, item);
+    state.schedule = ns;
+    saveSched();
+  }
+
+  dragState.ghost.remove();
+  dragState = null;
+  dropIndicator = null;
+  document.body.style.overflow = '';
+  render();
+}
+
+// Long press for touch
+let longPressTimer = null;
+let longPressData = null;
+
+function onTouchStart(e, day, idx) {
+  longPressData = { e, day, idx };
+  longPressTimer = setTimeout(() => {
+    if (longPressData) {
+      startDrag(longPressData.e, longPressData.day, longPressData.idx);
+      // Haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+  }, 250);
+}
+function onTouchMoveGlobal(e) {
+  if (longPressTimer && longPressData) {
+    const pos = getPos(e);
+    const dx = Math.abs(pos.x - getPos(longPressData.e).x);
+    const dy = Math.abs(pos.y - getPos(longPressData.e).y);
+    if (dx > 8 || dy > 8) { clearTimeout(longPressTimer); longPressTimer = null; longPressData = null; }
+  }
+  if (dragState) moveDrag(e);
+}
+function onTouchEndGlobal() {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; longPressData = null; }
+  if (dragState) endDrag();
+}
+
+document.addEventListener('touchmove', onTouchMoveGlobal, { passive: false });
+document.addEventListener('touchend', onTouchEndGlobal);
+document.addEventListener('touchcancel', onTouchEndGlobal);
+document.addEventListener('mousemove', (e) => { if (dragState) moveDrag(e); });
+document.addEventListener('mouseup', () => { if (dragState) endDrag(); });
+
+// ══════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════
+function render() {
+  const app = document.getElementById('app');
+  const wd = getWeekDates(state.currentWeek);
+  const td = todayStr();
+  const all = allTasks();
+  const doneCount = all.filter(t=>state.data[t.id]?.done).length;
+  const pct = all.length ? Math.round(doneCount/all.length*100) : 0;
+
+  app.className = 'container' + (state.view === 'semana' ? ' wide' : '');
+
+  let html = `
+    <div class="header">
+      <h1>📋 tracker semanal</h1>
+      <p>calendário estratégico · amanda</p>
+    </div>
+    <div class="week-nav">
+      <button onclick="changeWeek(-1)">‹</button>
+      <span>${formatWeekLabel(state.currentWeek)}</span>
+      <button onclick="changeWeek(1)">›</button>
+    </div>
+    <div class="progress">
+      <div class="progress-top">
+        <span class="label">${doneCount}/${all.length} atividades</span>
+        <span class="pct">${pct}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div class="tabs">
+      ${['semana','dia','resumo','automacoes'].map(v => {
+        const labels = {semana:'📅 semana',dia:'📝 dia',resumo:'📊 resumo',automacoes:'⚡ automações'};
+        return `<button class="${state.view===v?'active':''}" onclick="setView('${v}')">${labels[v]}</button>`;
+      }).join('')}
+    </div>
+  `;
+
+  if (state.view === 'dia') html += renderDayView(wd, td);
+  else if (state.view === 'semana') html += renderWeekView(wd, td);
+  else if (state.view === 'resumo') html += renderSummary(wd, all);
+  else if (state.view === 'automacoes') html += renderAutomations();
+
+  app.innerHTML = html;
+}
+
+function renderTaskCard(task, day, idx, compact) {
+  const e = state.data[task.id] || {done:false,note:"",realMins:null};
+  const col = CAT_COLORS[task.cat]||"#999";
+  const isExp = state.expandedTask === task.id;
+  const isEditNote = state.editingNote === task.id;
+  const isEditTime = state.editingTime === task.id;
+
+  let extra = '';
+  if (!compact) {
+    // Actions
+    extra += `<div class="task-actions">
+      <button onclick="toggleExpand('${task.id}')" ${isExp?'class="has-data"':''}>${isExp?'− ocultar':'+ detalhes'}${task.auto&&!isExp?' · ⚡':''}</button>
+      <button onclick="toggleNote('${task.id}','${(e.note||'').replace(/'/g,"\\'")}')" ${e.note?'class="has-data"':''}>${e.note?'📝 nota':'+ nota'}</button>
+      <button onclick="toggleTime('${task.id}',${e.realMins??task.mins})" ${e.realMins!=null?'class="has-data"':''}>⏱ tempo real</button>
+    </div>`;
+
+    // Expanded detail
+    if (isExp) {
+      extra += `<div class="task-detail"><p>${task.desc}</p>`;
+      if (task.auto) extra += `<div class="auto-box"><div class="label">⚡ automação</div><p>${task.auto}</p></div>`;
+      extra += `</div>`;
+    }
+
+    // Note display
+    if (e.note && !isEditNote) extra += `<div class="note-display">${esc(e.note)}</div>`;
+
+    // Note edit
+    if (isEditNote) extra += `<div class="inline-edit"><input type="text" id="note-input" value="${esc(e.note||'')}" placeholder="nota rápida..." onkeydown="if(event.key==='Enter')saveNote('${task.id}')"><button onclick="saveNote('${task.id}')">ok</button></div>`;
+
+    // Time edit
+    if (isEditTime) extra += `<div class="inline-edit"><input type="number" id="time-input" value="${e.realMins??task.mins}" onkeydown="if(event.key==='Enter')saveTime('${task.id}')"><span class="unit">min</span><button onclick="saveTime('${task.id}')">ok</button></div>`;
+  }
+
+  const realTimeHtml = e.realMins != null && e.realMins !== task.mins
+    ? `<span class="real-time ${e.realMins > task.mins ? 'over' : 'under'}">→ ${fmtMins(e.realMins)}</span>` : '';
+
+  return `<div class="task-card ${compact?'compact':''} ${e.done?'done':''}"
+    data-task-id="${task.id}" data-day="${day}" data-idx="${idx}"
+    style="border-left-color:${col}"
+    onmousedown="onCardMouseDown(event,'${day}',${idx})"
+    ontouchstart="onTouchStart(event,'${day}',${idx})">
+    ${compact?`<div class="drag-handle">⠿</div>`:''}
+    <div class="task-top">
+      <div class="checkbox ${e.done?'checked':''}" onclick="event.stopPropagation();toggleDone('${task.id}')"></div>
+      <div class="task-info">
+        <div class="task-title">
+          <span class="icon">${task.icon}</span>
+          <span class="name">${task.task}</span>
+        </div>
+        <div class="task-meta">
+          <span class="time">${task.time}</span>
+          <span class="dur" style="color:${col};background:${col}15">${fmtMins(task.mins)}</span>
+          ${realTimeHtml}
+        </div>
+        ${extra}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDayView(wd, td) {
+  let html = `<div class="day-pills">${DAYS.map((day,i) => {
+    const s = dayStats(day);
+    const isToday = wd[i]===td;
+    const isActive = state.activeDay===day;
+    return `<button class="day-pill ${isToday?'today':''} ${isActive?'active':''}" onclick="setActiveDay('${day}')">
+      <div class="name">${day}</div><div class="stat">${s.pct}%</div>
+    </button>`;
+  }).join('')}</div>`;
+
+  const days = state.activeDay ? [state.activeDay] : DAYS;
+  days.forEach(day => {
+    if (!state.activeDay) html += `<div class="day-label">${day} · ${wd[DAYS.indexOf(day)]}</div>`;
+    html += `<div class="task-list">`;
+    state.schedule[day].forEach((t,i) => { html += renderTaskCard(t, day, i, false); });
+    html += `<div class="drop-zone" data-day="${day}" data-idx="${state.schedule[day].length}"></div>`;
+    html += `</div>`;
+  });
+  return html;
+}
+
+function renderWeekView(wd, td) {
+  let html = `<div class="week-grid">`;
+  DAYS.forEach((day,di) => {
+    const s = dayStats(day);
+    const isToday = wd[di]===td;
+    html += `<div class="week-col">
+      <div class="week-col-header ${isToday?'today':''}">
+        <div class="name">${day}</div>
+        <div class="date">${wd[di]}</div>
+        <div class="stat ${s.pct===100?'done':''}">${s.pct}%</div>
+      </div>
+      <div class="week-col-body">`;
+    state.schedule[day].forEach((t,i) => { html += renderTaskCard(t, day, i, true); });
+    html += `<div class="drop-zone" data-day="${day}" data-idx="${state.schedule[day].length}"></div>`;
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderSummary(wd, all) {
+  const cs = catStats();
+  const doneAll = all.filter(t=>state.data[t.id]?.done).length;
+  const planned = all.reduce((s,t)=>s+(t.mins||0),0);
+  const real = all.reduce((s,t)=>s+(state.data[t.id]?.realMins??(state.data[t.id]?.done?t.mins:0)??0),0);
+  const diff = real - planned;
+
+  let html = `<div class="card"><h3>por categoria</h3>`;
+  Object.entries(cs).sort((a,b)=>b[1].total-a[1].total).forEach(([cat,s]) => {
+    const p = Math.round(s.done/s.total*100);
+    const timeInfo = s.real>0?` · ⏱ ${fmtMins(s.real)}/${fmtMins(s.planned)}`:'';
+    html += `<div class="cat-row"><div class="top"><span class="name">${CAT_LABELS[cat]}</span><span class="nums">${s.done}/${s.total}${timeInfo}</span></div><div class="cat-bar"><div class="cat-fill" style="width:${p}%;background:${CAT_COLORS[cat]}"></div></div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card"><h3>por dia</h3><div class="day-bars">`;
+  DAYS.forEach(day => {
+    const s = dayStats(day);
+    html += `<div class="day-bar"><div class="col-wrap"><div class="col" style="height:${Math.max(s.pct,4)}%;background:${s.pct===100?'#22C55E':'#111'}"></div></div><div class="lbl">${day}</div><div class="val">${s.pct}%</div></div>`;
+  });
+  html += `</div></div>`;
+
+  html += `<div class="card"><h3>⏱ tempo: planejado vs. real</h3><div class="time-compare">
+    <div class="item"><span>Planejado</span><div>${fmtMins(planned)}</div></div>
+    <div class="item"><span>Real</span><div>${fmtMins(real)}</div></div>
+    <div class="item"><span>Dif.</span><div style="color:${diff>0?'#EF4444':'#22C55E'}">${diff>0?'+':''}${fmtMins(Math.abs(diff))}</div></div>
+  </div></div>`;
+
+  html += `<div class="card"><h3>📝 notas da semana</h3><div class="notes-list">`;
+  const noted = all.filter(t=>state.data[t.id]?.note);
+  if (!noted.length) html += `<p style="font-size:12px;color:#999">nenhuma nota esta semana</p>`;
+  else noted.forEach(t => { html += `<div class="note-item" style="border-left-color:${CAT_COLORS[t.cat]}"><div class="title">${t.icon} ${t.task}</div><div class="text">${esc(state.data[t.id].note)}</div></div>`; });
+  html += `</div></div>`;
+  html += `<button class="reset-btn" onclick="resetWeek()">resetar semana</button>`;
+  return html;
+}
+
+function renderAutomations() {
+  let html = `<div class="auto-section"><p class="intro">⚡ Automações sugeridas usando n8n, Apify e Claude Cowork.</p>`;
+  DAYS.forEach(day => {
+    const autos = state.schedule[day].filter(t=>t.auto);
+    if (!autos.length) return;
+    html += `<div class="day-label">${day}</div>`;
+    autos.forEach(t => {
+      html += `<div class="auto-card" style="border-left-color:${CAT_COLORS[t.cat]}"><div class="title">${t.icon} ${t.task} <span class="time-tag">${t.time}</span></div><div class="body"><p>⚡ ${t.auto}</p></div></div>`;
+    });
+  });
+  html += `</div>`;
+  return html;
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ══════════════════════════════════════════════════════════
+// ACTIONS (global)
+// ══════════════════════════════════════════════════════════
+window.changeWeek = (d) => { state.currentWeek = shiftWeek(state.currentWeek,d); state.expandedTask=null; state.editingNote=null; state.editingTime=null; loadWeek(); render(); };
+window.setView = (v) => { state.view=v; state.expandedTask=null; state.editingNote=null; state.editingTime=null; render(); };
+window.setActiveDay = (d) => { state.activeDay = state.activeDay===d ? null : d; render(); };
+window.toggleDone = (id) => { if(!state.data[id]) state.data[id]={done:false,note:"",realMins:null}; state.data[id]={...state.data[id],done:!state.data[id].done}; saveData(); render(); };
+window.toggleExpand = (id) => { state.expandedTask = state.expandedTask===id ? null : id; render(); };
+window.toggleNote = (id, current) => { state.editingNote = state.editingNote===id ? null : id; state.editingTime=null; render(); if(state.editingNote) setTimeout(()=>{const el=document.getElementById('note-input');if(el)el.focus();},50); };
+window.toggleTime = (id, current) => { state.editingTime = state.editingTime===id ? null : id; state.editingNote=null; render(); if(state.editingTime) setTimeout(()=>{const el=document.getElementById('time-input');if(el)el.focus();},50); };
+window.saveNote = (id) => { const el=document.getElementById('note-input'); if(!el)return; if(!state.data[id]) state.data[id]={done:false,note:"",realMins:null}; state.data[id]={...state.data[id],note:el.value}; state.editingNote=null; saveData(); render(); };
+window.saveTime = (id) => { const el=document.getElementById('time-input'); if(!el)return; const v=parseInt(el.value); if(isNaN(v)||v<0)return; if(!state.data[id]) state.data[id]={done:false,note:"",realMins:null}; state.data[id]={...state.data[id],realMins:v}; state.editingTime=null; saveData(); render(); };
+window.resetWeek = () => { if(!confirm("Resetar dados e layout desta semana?"))return; state.data={}; state.schedule=JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)); localStorage.removeItem(dataKey()); localStorage.removeItem(schedKey()); render(); };
+
+window.onCardMouseDown = (e, day, idx) => {
+  if (e.target.closest('.checkbox') || e.target.closest('button') || e.target.closest('input')) return;
+  startDrag(e, day, idx);
+};
+window.onTouchStart = (e, day, idx) => {
+  if (e.target.closest('.checkbox') || e.target.closest('button') || e.target.closest('input')) return;
+  onTouchStart(e, day, idx);
+};
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+loadWeek();
+render();
+</script>
+</body>
 </html>
