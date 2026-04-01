@@ -203,6 +203,28 @@ button{font-family:inherit}
 .modal .field-row .field{flex:1}
 .modal .save-btn{background:#111;color:#FFF;border:none;border-radius:8px;padding:10px 0;width:100%;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;margin-top:4px}
 .modal .task-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+
+/* Links in modal */
+.links-section{margin-top:2px}
+.links-section label{display:block;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.link-add{display:flex;gap:4px;margin-bottom:8px}
+.link-add input{flex:1;padding:6px 8px;border:1px solid #E5E5E5;border-radius:6px;font-size:11px;font-family:inherit;outline:none}
+.link-add input:focus{border-color:#999}
+.link-add button{background:#111;color:#FFF;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;white-space:nowrap}
+.link-quick{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.link-quick button{display:flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid #E5E5E5;border-radius:6px;background:#FFF;cursor:pointer;font-size:10px;font-family:inherit;color:#444;transition:border-color .15s}
+.link-quick button:hover{border-color:#999}
+.link-quick button .lq-icon{font-size:14px}
+.link-list{display:flex;flex-direction:column;gap:4px}
+.link-item{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#FAFAFA;border-radius:6px;font-size:11px}
+.link-item .li-icon{font-size:14px;flex-shrink:0}
+.link-item .li-name{flex:1;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;text-decoration:underline;text-decoration-color:#DDD;text-underline-offset:2px}
+.link-item .li-name:hover{color:#111;text-decoration-color:#999}
+.link-item .li-del{background:none;border:none;cursor:pointer;font-size:10px;color:#CCC;padding:0;flex-shrink:0}
+.link-item .li-del:hover{color:#999}
+
+/* Link indicator in timeline block */
+.tb-link{font-size:7px;opacity:.6;margin-left:2px}
 </style>
 </head>
 <body>
@@ -527,6 +549,7 @@ function renderTimeline(wd,td){
       const showNote=height>=45 && e.note;
       const endMin=p.startMin+p.mins;
       const hasExtra=e.userDesc||e.note;
+      const hasLinks=e.links&&e.links.length>0;
 
       tl+=`<div class="tblock ${e.done?"done":""}" data-tid="${t.id}" style="top:${y}px;height:${height}px;background:${col}18;border-left:3px solid ${col}"
         onmousedown="onMD(event,'${day}',${i})" ontouchstart="onTS(event,'${day}',${i})">
@@ -534,6 +557,7 @@ function renderTimeline(wd,td){
           <div class="tb-check ${e.done?"checked":""}" onclick="event.stopPropagation();tgD('${t.id}')"></div>
           <span class="tb-icon">${t.icon}</span>
           <span class="tb-name">${t.task}</span>
+          ${hasLinks?'<span class="tb-link">🔗</span>':""}
           ${hasExtra?'<span style="font-size:7px;color:'+col+'">●</span>':""}
         </div>`;
       if(showTime) tl+=`<div class="tb-time">${timeLabel(p.startMin)}–${timeLabel(endMin)} · ${fmtM(p.mins)}</div>`;
@@ -568,6 +592,23 @@ function renderTimeline(wd,td){
         </div>
         <div class="field"><label>mover para dia</label>
           <div style="display:flex;gap:4px">${DAYS.map(d=>`<button onclick="moveTask('${day}',${idx},'${d}')" style="flex:1;padding:6px 0;border-radius:6px;cursor:pointer;border:${d===day?"1.5px solid #111":"1px solid #DDD"};background:${d===day?"#111":"#FFF"};color:${d===day?"#FFF":"#111"};font-size:11px;font-weight:600;font-family:inherit">${d}</button>`).join("")}</div>
+        </div>
+        <div class="links-section field">
+          <label>🔗 links e arquivos</label>
+          <div class="link-add">
+            <input type="text" id="m-link" placeholder="colar URL (Drive, Notion, Figma...)" onkeydown="if(event.key==='Enter')addLink('${t.id}')">
+            <button onclick="addLink('${t.id}')">anexar</button>
+          </div>
+          <div class="link-quick">
+            <button onclick="newGoogleFile('doc','${t.id}','${esc(t.task)}')"><span class="lq-icon">📄</span> Novo Doc</button>
+            <button onclick="newGoogleFile('sheet','${t.id}','${esc(t.task)}')"><span class="lq-icon">📊</span> Nova Sheet</button>
+            <button onclick="newGoogleFile('slides','${t.id}','${esc(t.task)}')"><span class="lq-icon">📽️</span> Novo Slides</button>
+          </div>
+          <div class="link-list">${(e.links||[]).map((lk,li)=>{
+            const ico=getLinkIcon(lk.url);
+            const name=lk.name||extractLinkName(lk.url);
+            return`<div class="link-item"><span class="li-icon">${ico}</span><span class="li-name" onclick="window.open('${esc(lk.url)}','_blank')">${esc(name)}</span><button class="li-del" onclick="removeLink('${t.id}',${li})">✕</button></div>`;
+          }).join("")}${!(e.links&&e.links.length)?'<div style="font-size:10px;color:#CCC;text-align:center;padding:4px 0">nenhum link anexado</div>':""}</div>
         </div>
         ${t.auto?`<div style="margin-top:8px;padding:6px 8px;background:#F8F8F8;border-radius:6px;border-left:2px solid #DDD"><div style="font-size:9px;font-weight:700;color:#BBB;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">⚡ automação</div><p style="font-size:11px;color:#666;line-height:1.5;margin:0">${t.auto}</p></div>`:""}
         <button class="save-btn" onclick="saveTask('${t.id}','${day}',${idx})">salvar</button>
@@ -684,15 +725,88 @@ window.onTS=(e,d,i)=>{
 };
 window.startR=(e,d,i)=>{ptrDown=null;startResize(e,d,i)};
 
+// ══════ LINK HELPERS ══════
+function getLinkIcon(url){
+  if(!url)return"🔗";
+  if(url.includes("docs.google.com/document"))return"📄";
+  if(url.includes("docs.google.com/spreadsheets"))return"📊";
+  if(url.includes("docs.google.com/presentation"))return"📽️";
+  if(url.includes("drive.google.com"))return"📁";
+  if(url.includes("notion.so")||url.includes("notion.site"))return"📓";
+  if(url.includes("figma.com"))return"🎨";
+  if(url.includes("canva.com"))return"🖼️";
+  if(url.includes("miro.com"))return"🟡";
+  if(url.includes("trello.com"))return"📋";
+  if(url.includes("github.com"))return"🐙";
+  if(url.includes("youtube.com")||url.includes("youtu.be"))return"▶️";
+  if(url.includes("loom.com"))return"🎥";
+  return"🔗";
+}
+function extractLinkName(url){
+  try{
+    const u=new URL(url);
+    if(u.hostname.includes("docs.google.com")){
+      if(url.includes("/document/"))return"Google Doc";
+      if(url.includes("/spreadsheets/"))return"Google Sheet";
+      if(url.includes("/presentation/"))return"Google Slides";
+    }
+    if(u.hostname.includes("drive.google.com"))return"Google Drive";
+    if(u.hostname.includes("notion"))return"Notion";
+    if(u.hostname.includes("figma"))return"Figma";
+    if(u.hostname.includes("canva"))return"Canva";
+    return u.hostname.replace("www.","");
+  }catch{return url.substring(0,40)}
+}
+window.getLinkIcon=getLinkIcon;
+window.extractLinkName=extractLinkName;
+
+window.addLink=(id)=>{
+  const el=document.getElementById("m-link");
+  if(!el||!el.value.trim())return;
+  let url=el.value.trim();
+  if(!url.startsWith("http"))url="https://"+url;
+  if(!S.data[id])S.data[id]={done:false,note:"",realMins:null,userDesc:"",links:[]};
+  if(!S.data[id].links)S.data[id].links=[];
+  S.data[id].links.push({url,name:""});
+  saveD();render();
+  // Reopen modal
+  setTimeout(()=>{const inp=document.getElementById("m-link");if(inp)inp.focus()},80);
+};
+
+window.removeLink=(id,idx)=>{
+  if(!S.data[id]?.links)return;
+  S.data[id].links.splice(idx,1);
+  saveD();render();
+};
+
+window.newGoogleFile=(type,id,taskName)=>{
+  const urls={
+    doc:`https://docs.google.com/document/create`,
+    sheet:`https://docs.google.com/spreadsheets/create`,
+    slides:`https://docs.google.com/presentation/create`,
+  };
+  const newUrl=urls[type];
+  if(!newUrl)return;
+  // Open new file in new tab
+  const w=window.open(newUrl,"_blank");
+  // Auto-add to links
+  if(!S.data[id])S.data[id]={done:false,note:"",realMins:null,userDesc:"",links:[]};
+  if(!S.data[id].links)S.data[id].links=[];
+  const names={doc:"Google Doc",sheet:"Google Sheet",slides:"Google Slides"};
+  S.data[id].links.push({url:newUrl,name:names[type]+" — "+taskName});
+  saveD();render();
+};
+
 window.closeTask=(e)=>{if(e&&e.target&&!e.target.classList.contains("modal-overlay"))return;S.selTask=null;render()};
 window.saveTask=(id,day,idx)=>{
   const desc=document.getElementById("m-desc")?.value||"";
   const dur=parseInt(document.getElementById("m-dur")?.value);
   const note=document.getElementById("m-note")?.value||"";
-  if(!S.data[id])S.data[id]={done:false,note:"",realMins:null,userDesc:""};
+  if(!S.data[id])S.data[id]={done:false,note:"",realMins:null,userDesc:"",links:[]};
   S.data[id].userDesc=desc;
   S.data[id].note=note;
   if(!isNaN(dur)&&dur>=15)S.data[id].realMins=dur;
+  if(!S.data[id].links)S.data[id].links=[];
   S.selTask=null;saveD();render();
 };
 window.moveTask=(fromDay,idx,toDay)=>{
