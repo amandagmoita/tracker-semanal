@@ -243,7 +243,29 @@ button{font-family:inherit}
 .tb-link{font-size:7px;opacity:.6;margin-left:2px}
 .tb-close{position:absolute;top:1px;right:2px;background:none;border:none;font-size:9px;color:rgba(0,0,0,.2);cursor:pointer;padding:2px 3px;line-height:1;z-index:2;border-radius:3px}
 .tb-close:hover{color:rgba(0,0,0,.5);background:rgba(0,0,0,.05)}
-.tblock.dismissed{display:none}
+.gap-slot{
+  position:absolute;left:3px;right:3px;border-radius:6px;
+  border:1px dashed #DDD;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:1;background:#FAFAFA;transition:background .15s;
+}
+.gap-slot:hover{background:#F0F0F0;border-color:#BBB}
+.gap-slot .gap-label{font-size:9px;color:#BBB;font-weight:500}
+.gap-slot:hover .gap-label{color:#888}
+/* Add event modal */
+.add-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:101;display:flex;align-items:center;justify-content:center;padding:16px}
+.add-panel{background:#FFF;border-radius:14px;padding:20px;max-width:360px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.15);max-height:80vh;overflow-y:auto}
+.add-panel h3{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.add-panel .ap-close{background:none;border:none;font-size:16px;cursor:pointer;color:#999}
+.add-list{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.add-option{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #E5E5E5;border-radius:8px;cursor:pointer;background:#FFF;font-family:inherit;font-size:11px;text-align:left;transition:border-color .15s}
+.add-option:hover{border-color:#999;background:#FAFAFA}
+.add-option .ao-icon{font-size:14px}
+.add-option .ao-name{font-weight:600;color:#111}
+.add-option .ao-cat{font-size:9px;color:#999;margin-left:auto}
+.add-custom{margin-top:8px}
+.add-custom label{display:block;font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.add-custom input,.add-custom select{width:100%;padding:7px 9px;border:1px solid #E5E5E5;border-radius:6px;font-size:11px;font-family:inherit;outline:none;margin-bottom:8px}
+.add-custom button{background:#111;color:#FFF;border:none;border-radius:8px;padding:9px 0;width:100%;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit}
 </style>
 </head>
 <body>
@@ -294,7 +316,7 @@ const DS={
   ],
 };
 
-let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null,memos:[],selTask:null,sideLinks:[]};
+let S={week:getWeekKey(new Date()),data:{},sched:null,view:"semana",activeDay:null,exp:null,enote:null,etime:null,memos:[],selTask:null,sideLinks:[],addEvt:null};
 
 function getWeekKey(d){d=new Date(d);const dy=d.getDay(),df=d.getDate()-dy+(dy===0?-6:1);const m=new Date(d.setDate(df));return`${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}-${String(m.getDate()).padStart(2,"0")}`}
 function weekDates(w){const[y,m,d]=w.split("-").map(Number);const mn=new Date(y,m-1,d);return DAYS.map((_,i)=>{const t=new Date(mn);t.setDate(mn.getDate()+i);return`${String(t.getDate()).padStart(2,"0")}/${String(t.getMonth()+1).padStart(2,"0")}`})}
@@ -316,7 +338,7 @@ function getWeekNumber(weekKey){
   const days=Math.floor((date-jan1)/(24*60*60*1000));
   return Math.ceil((days+jan1.getDay()+1)/7);
 }
-function isWeekA(weekKey){return getWeekNumber(weekKey)%2===0}
+function isWeekA(weekKey){return getWeekNumber(weekKey)%2===1}
 
 function getDefaultSchedule(weekKey){
   const sched=JSON.parse(JSON.stringify(DS));
@@ -345,8 +367,8 @@ function saveS(){localStorage.setItem(sk(),JSON.stringify(S.sched))}
 function saveM(){localStorage.setItem(mk(),JSON.stringify(S.memos))}
 function saveSL(){localStorage.setItem("tv3:sidelinks",JSON.stringify(S.sideLinks))}
 
-function allT(){return Object.values(S.sched).flat().filter(t=>!S.data[t.id]?.dismissed)}
-function dStats(day){const t=S.sched[day].filter(x=>!S.data[x.id]?.dismissed),dn=t.filter(x=>S.data[x.id]?.done).length;return{done:dn,total:t.length,pct:t.length?Math.round(dn/t.length*100):0}}
+function allT(){return Object.values(S.sched).flat().filter(t=>t.type!=="gap")}
+function dStats(day){const t=S.sched[day].filter(x=>x.type!=="gap"),dn=t.filter(x=>S.data[x.id]?.done).length;return{done:dn,total:t.length,pct:t.length?Math.round(dn/t.length*100):0}}
 
 // ══════ Compute timeline positions ══════
 function computePositions(day){
@@ -354,13 +376,13 @@ function computePositions(day){
   let cursor=START_HOUR*60;
   const positions=[];
   for(const t of tasks){
-    if(S.data[t.id]?.dismissed) continue; // skip dismissed
-    const mins=S.data[t.id]?.realMins??t.mins;
+    const isGap=t.type==="gap";
+    const mins=isGap?t.mins:(S.data[t.id]?.realMins??t.mins);
     if(cursor<LUNCH_START*60 && cursor+mins>LUNCH_START*60){
       if(cursor>=LUNCH_START*60){cursor=LUNCH_END*60;}
     }
     if(cursor>=LUNCH_START*60 && cursor<LUNCH_END*60) cursor=LUNCH_END*60;
-    positions.push({task:t,startMin:cursor,mins});
+    positions.push({task:t,startMin:cursor,mins,isGap});
     cursor+=mins;
   }
   return positions;
@@ -627,8 +649,16 @@ function renderTimeline(wd,td){
 
     // Task blocks
     pos.forEach((p,i)=>{
+      if(p.isGap){
+        // Render empty gap slot
+        const y=minToY(p.startMin);
+        const height=p.mins*PX_PER_MIN;
+        tl+=`<div class="gap-slot" style="top:${y}px;height:${Math.max(height,20)}px" onclick="openAddEvent('${day}',${i})">
+          <span class="gap-label">+ ${fmtM(p.mins)}</span>
+        </div>`;
+        return;
+      }
       const t=p.task,e=S.data[t.id]||{done:false,note:"",realMins:null,userDesc:""};
-      if(S.data[t.id]?.dismissed) return; // skip dismissed
       const col=CC[t.cat]||"#999";
       const y=minToY(p.startMin);
       const height=p.mins*PX_PER_MIN;
@@ -707,7 +737,42 @@ function renderTimeline(wd,td){
     }
   }
 
-  return `<div class="tl-layout">${tl}${sb}</div>${modal}`;
+  // Add event modal
+  let addModal="";
+  if(S.addEvt){
+    const{day,idx}=S.addEvt;
+    const gap=S.sched[day][idx];
+    if(gap&&gap.type==="gap"){
+      const defTasks=Object.values(DS).flat();
+      const cats=Object.entries(CC);
+      addModal=`<div class="add-modal" onclick="closeAddEvt(event)"><div class="add-panel" onclick="event.stopPropagation()">
+        <h3>Adicionar evento<button class="ap-close" onclick="S.addEvt=null;render()">✕</button></h3>
+        <div style="font-size:10px;color:#999;margin-bottom:10px">${day} · ${fmtM(gap.mins)} disponível</div>
+        <div style="font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Eventos sugeridos</div>
+        <div class="add-list">
+          ${defTasks.filter((t,i,a)=>a.findIndex(x=>x.task===t.task)===i).map(t=>{
+            const col=CC[t.cat]||"#999";
+            return`<button class="add-option" onclick="pickEvent('${day}',${idx},'${esc(t.id)}')">
+              <span class="ao-icon">${t.icon}</span>
+              <span class="ao-name">${t.task}</span>
+              <span class="ao-cat" style="color:${col}">${fmtM(t.mins)}</span>
+            </button>`;
+          }).join("")}
+        </div>
+        <div class="add-custom">
+          <div style="font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Evento personalizado</div>
+          <input type="text" id="ae-name" placeholder="Nome do evento">
+          <div style="display:flex;gap:6px">
+            <input type="number" id="ae-mins" value="${gap.mins}" min="15" step="15" style="width:80px;flex:none" placeholder="min">
+            <select id="ae-cat">${cats.map(([k,c])=>`<option value="${k}">${CL[k]}</option>`).join("")}</select>
+          </div>
+          <button onclick="addCustomEvent('${day}',${idx})">criar evento</button>
+        </div>
+      </div></div>`;
+    }
+  }
+
+  return `<div class="tl-layout">${tl}${sb}</div>${modal}${addModal}`;
 }
 
 function renderDay(wd,td){
@@ -790,9 +855,22 @@ window.tgD=(id)=>{if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};S
 
 window.dismissTask=(day,idx,id)=>{
   if(!confirm("Remover este evento desta semana?"))return;
-  if(!S.data[id])S.data[id]={done:false,note:"",realMins:null};
-  S.data[id].dismissed=true;
-  saveD();render();
+  const ns=JSON.parse(JSON.stringify(S.sched));
+  const removed=ns[day][idx];
+  const mins=S.data[removed.id]?.realMins??removed.mins;
+  // Replace with gap
+  ns[day][idx]={type:"gap",mins};
+  // Merge adjacent gaps
+  const merged=[];
+  for(const t of ns[day]){
+    if(t.type==="gap"&&merged.length&&merged[merged.length-1].type==="gap"){
+      merged[merged.length-1].mins+=t.mins;
+    } else {
+      merged.push(t);
+    }
+  }
+  ns[day]=merged;
+  S.sched=ns;S.selTask=null;saveS();render();
 };
 window.tgE=(id)=>{S.exp=S.exp===id?null:id;render()};
 window.tgN=(id)=>{S.enote=S.enote===id?null:id;S.etime=null;render();if(S.enote)setTimeout(()=>{const el=document.getElementById("ni");if(el)el.focus()},50)};
@@ -849,6 +927,45 @@ window.onTS=(e,d,i)=>{
   },300);
 };
 window.startR=(e,d,i)=>{ptrDown=null;startResize(e,d,i)};
+
+// ══════ ADD EVENT (fill gaps) ══════
+window.openAddEvent=(day,idx)=>{S.addEvt={day,idx};render()};
+window.closeAddEvt=(e)=>{if(e&&e.target&&!e.target.classList.contains("add-modal"))return;S.addEvt=null;render()};
+
+window.pickEvent=(day,gapIdx,templateId)=>{
+  // Find template from default schedule
+  const tmpl=Object.values(DS).flat().find(t=>t.id===templateId);
+  if(!tmpl)return;
+  const ns=JSON.parse(JSON.stringify(S.sched));
+  const gap=ns[day][gapIdx];
+  const remaining=gap.mins-tmpl.mins;
+  // Replace gap with task (+ leftover gap if any)
+  const newTask={...JSON.parse(JSON.stringify(tmpl)),id:tmpl.id+"_"+Date.now()};
+  if(remaining>0){
+    ns[day].splice(gapIdx,1,newTask,{type:"gap",mins:remaining});
+  } else {
+    ns[day].splice(gapIdx,1,newTask);
+  }
+  S.sched=ns;S.addEvt=null;saveS();render();
+};
+
+window.addCustomEvent=(day,gapIdx)=>{
+  const name=document.getElementById("ae-name")?.value?.trim();
+  const mins=parseInt(document.getElementById("ae-mins")?.value);
+  const cat=document.getElementById("ae-cat")?.value||"admin";
+  if(!name||isNaN(mins)||mins<15)return;
+  const ns=JSON.parse(JSON.stringify(S.sched));
+  const gap=ns[day][gapIdx];
+  const remaining=gap.mins-mins;
+  const icons={ia:"✍️",va:"✍️",pesquisa:"🔬",estudo:"🧠",ecom:"📦",social:"📱",reuniao:"🤝",admin:"📧",saude:"🏋️",revisao:"📊"};
+  const newTask={id:"custom_"+Date.now(),task:name,icon:icons[cat]||"📌",cat,desc:"",mins:Math.min(mins,gap.mins)};
+  if(remaining>0){
+    ns[day].splice(gapIdx,1,newTask,{type:"gap",mins:remaining});
+  } else {
+    ns[day].splice(gapIdx,1,newTask);
+  }
+  S.sched=ns;S.addEvt=null;saveS();render();
+};
 
 // ══════ LINK HELPERS ══════
 function getLinkIcon(url){
